@@ -1,13 +1,17 @@
 import {timestamp, integer, varchar, pgTable, date, decimal, boolean} from "drizzle-orm/pg-core";
 import { pgEnum } from 'drizzle-orm/pg-core';
 
+//Enums
 export const genderEnum = pgEnum('gender_type',
     ['male', 'female', 'non-binary', 'prefer-not-to-say']);
 
 export const equipmentEnum = pgEnum('equipment_type',
     ['Classic/Raw', 'Equipped','both']);
 
+export const paymentStatusEnum = pgEnum('payment_statuses',
+    ['paid','unpaid','overdue']);
 
+//tables
 const timestamps = {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull()
@@ -54,6 +58,17 @@ export const athletes = pgTable('athletes', {
     isActive: boolean('is_active').default(true),
     deleted: boolean('deleted').default(false),
     deletedAt: timestamp('deleted_at')
+});
 
+export const payments = pgTable('payments',{
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    athleteId: integer('athleteId').notNull().references(
+        () => athletes.id, { onDelete: 'restrict'}),
+    coachId: integer('coachId').notNull().references(
+        () => coaches.id, { onDelete: 'restrict'}),
+    amount: decimal('amount_in_cad', { precision: 5, scale: 2 }),
+    dueDate: date('duedate' , { mode: 'date' }).notNull(),
+    paymentStatus: paymentStatusEnum('payment_status').notNull().default('unpaid'),
+    ...timestamps
 })
 
