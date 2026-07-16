@@ -15,6 +15,13 @@
       "when": 1784167695132,
       "tag": "0001_tiresome_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784233349544,
+      "tag": "0002_glossy_doomsday",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,9 @@ export const paymentStatusEnum = pgEnum('payment_statuses',
 export const taskStatusEnum = pgEnum('task_status',
     ['pending', 'completed', 'overdue']);
 
+export const weightClassEnum = pgEnum('weight_classes',['43','47','52','57','63','69','76','84','84+',
+    '53','59','66','74','83','93','105','120','120+']);
+
 
 //tables
 const timestamps = {
@@ -37,6 +40,7 @@ export const athletes = pgTable('athletes', {
     name: varchar('name', {length: 255}).notNull(),
     email: varchar('email', {length: 255}),
     gender: genderEnum('gender').notNull(),
+    weightClass: weightClassEnum('weight_class').notNull(),
     dateOfBirth: date('date_of_birth', { mode: 'date' }).notNull(),
     phoneNumber: varchar('phoneNumber', {length: 11}),
     country: varchar('country', { length: 100 }),
