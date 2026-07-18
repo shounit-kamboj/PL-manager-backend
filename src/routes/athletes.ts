@@ -13,9 +13,9 @@ router.get("/", async (req, res) => {
         // }
 
         const {
+            search,
             weightClass,
             ageClass,
-            search,
             paymentStatus,
             //sort,
             order,
@@ -23,8 +23,8 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        const currentPage = Math.max(1, Number(page));
-        const limitPerPage = Math.max(1, Number(limit));
+        const currentPage = Math.max(1, +page);
+        const limitPerPage = Math.max(1, +limit);
         const offset = (currentPage - 1) * limitPerPage;
 
         const filterConditions = [];
@@ -36,12 +36,6 @@ router.get("/", async (req, res) => {
         if (search) {
             const term = `%${search}%`;
             filterConditions.push(or(ilike(athletes.name, term)));
-        }
-
-        if (weightClass) {
-            filterConditions.push(
-                eq(athletes.weightClass, weightClass as typeof athletes.weightClass.enumValues[number])
-            );
         }
 
         if (ageClass) {
@@ -64,100 +58,6 @@ router.get("/", async (req, res) => {
             filterConditions.push(gte(athletes.dateOfBirth, new Date(`${minBirthYear}-01-01`)));
             filterConditions.push(lte(athletes.dateOfBirth, new Date(`${maxBirthYear}-12-31`)));
         }
-
-
-        // current training block: the most recently updated one per athlete
-        const currentTrainingBlock = db
-            .select()
-            .from(trainingBlocks)
-            .where(eq(trainingBlocks.athleteId, athletes.id))
-            .orderBy(desc(trainingBlocks.lastUpdate))
-            .limit(1)
-            .as('current_training_block');
-
-        // next competition: the closest upcoming one per athlete
-        const nextCompetition = db
-            .select({
-                id: athletesAndCompetitions.id,
-                date: athletesAndCompetitions.date,
-                weighInTime: athletesAndCompetitions.weighInTime,
-                equipment: athletesAndCompetitions.equipment,
-                competitionName: competitions.name,
-            })
-            .from(athletesAndCompetitions)
-            .leftJoin(competitions, eq(competitions.id, athletesAndCompetitions.compId))
-            .where(
-                and(
-                    eq(athletesAndCompetitions.athleteId, athletes.id),
-                    gte(athletesAndCompetitions.date, sql`CURRENT_DATE`)
-                )
-            )
-            .orderBy(asc(athletesAndCompetitions.date))
-            .limit(1)
-            .as('next_competition');
-
-        // sorting
-        const sortableColumns: Record<string, any> = {
-            'name': athletes.name,
-            'dateOfBirth': athletes.dateOfBirth,
-            'payment.dueDate': payments.dueDate,
-            'nextCompetitionDetails.date': nextCompetition.date,
-            'trainingBlock.nextUpdateDate': sql`${currentTrainingBlock.lastUpdate} + (${currentTrainingBlock.daysBetweenUpdates} * interval '1 day')`,
-        };
-
-       // const sortColumn = sortableColumns[sort as string] ?? athletes.id;
-        //const sortOrder = order === 'asc' ? asc(sortColumn) : desc(sortColumn);
-
-        const results = await db
-            .select({
-                ...getTableColumns(athletes),
-                payment: payments,
-                trainingBlock: {
-                    id: currentTrainingBlock.id,
-                    athleteId: currentTrainingBlock.athleteId,
-                    coachId: currentTrainingBlock.coachId,
-                    startDate: currentTrainingBlock.startDate,
-                    endDate: currentTrainingBlock.endDate,
-                    lastUpdate: currentTrainingBlock.lastUpdate,
-                    daysBetweenUpdates: currentTrainingBlock.daysBetweenUpdates,
-                    sendPostBlockOverviewReminder: currentTrainingBlock.sendPostBlockOverviewReminder,
-                    link: currentTrainingBlock.link,
-                },
-                nextCompetitionDetails: {
-                    id: nextCompetition.id,
-                    date: nextCompetition.date,
-                    weighInTime: nextCompetition.weighInTime,
-                    equipment: nextCompetition.equipment,
-                    competitionName: nextCompetition.competitionName,
-                },
-            })
-            .from(athletes)
-            .leftJoin(payments, eq(payments.athleteId, athletes.id))
-            .leftJoinLateral(currentTrainingBlock, sql`true`)
-            .leftJoinLateral(nextCompetition, sql`true`)
-            .where(and(...filterConditions))
-            .limit(limitPerPage)
-            .offset(offset);
-
-        const filteredResults = paymentStatus
-            ? results.filter(r => r.payment?.paymentStatus === paymentStatus)
-            : results;
-
-        const countResult = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(athletes)
-            .leftJoin(payments, eq(payments.athleteId, athletes.id))
-            .where(and(...filterConditions));
-
-        const totalCount = countResult[0]?.count ?? 0;
-
-        res.status(200).json({
-            data: filteredResults,
-            page: currentPage,
-            limit: limitPerPage,
-            total: totalCount,
-            totalPages: Math.ceil(totalCount / limitPerPage)
-        })
 
     }
     catch (err) {
