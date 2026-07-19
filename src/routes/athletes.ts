@@ -1,6 +1,6 @@
 import express from 'express';
-import { athletes, payments, trainingBlocks, athletesAndCompetitions, competitions } from '../db/schema';
-import { eq, and, or, ilike, gte, lte, sql, getTableColumns, asc, desc } from 'drizzle-orm';
+import { athletes, payments, trainingBlocks} from '../db/schema';
+import { eq, and, or, ilike, gte, lte, sql, getTableColumns, desc } from 'drizzle-orm';
 import { db } from '../db';
 
 const router = express.Router();
@@ -134,8 +134,7 @@ router.get("/", async (req, res) => {
     }
     catch (err) {
         console.log(`GET /athletes error ${err}`);
-        // res.status(500).json({ message: "Internal server error" }); ////CHANGE BACK
-        res.status(500).json(`GET /athletes error ${err}`); //del after ^
+        res.status(500).json({ message: "Internal server error" });
     }
 });
 
