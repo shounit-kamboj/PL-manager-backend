@@ -14,10 +14,11 @@ router.get("/", async (req, res) => {
 
         const {
             search,
+            gender,
             weightClass,
             ageClass,
             paymentStatus,
-            //sort,
+            sort,
             order,
             page = 1,
             limit = 10
@@ -26,16 +27,43 @@ router.get("/", async (req, res) => {
         const currentPage = Math.max(1, +page);
         const limitPerPage = Math.max(1, +limit);
         const offset = (currentPage - 1) * limitPerPage;
+        const sortableColumns: Record<string, any> = {
+            'name': athletes.name,
+            'dateOfBirth': athletes.dateOfBirth,
+            'weightClass': athletes.weightClass,
+            'payment.dueDate': payments.dueDate,
+            'trainingBlock.nextUpdateDate': sql`${trainingBlocks.lastUpdate} + (${trainingBlocks.daysBetweenUpdates} * interval '1 day')`,
+            'meetPrSquat': athletes.meetPrSquat,
+            'meetPrBench': athletes.meetPrBench,
+            'meetPrDeadlift': athletes.meetPrDeadlift,
+            'meetPrTotal': athletes.meetPrTotal,
+        };
+
+        const sortColumn = sortableColumns[sort as string] ?? athletes.id;
+        const sortOrder = order === 'asc'
+            ? sql`${sortColumn} ASC NULLS LAST`
+            : sql`${sortColumn} DESC NULLS LAST`;
 
         const filterConditions = [];
 
-        //CHNAGE LATER
+        //CHANGE LATER
         // filterConditions.push(eq(athletes.coachId, req.user.id));
-        filterConditions.push(eq(athletes.deleted, false));
+        filterConditions.push(eq(athletes.deleted, false)); //only show current roster
 
         if (search) {
-            const term = `%${search}%`;
-            filterConditions.push(or(ilike(athletes.name, term)));
+            filterConditions.push(or(ilike(athletes.name, `%${search}%`)));
+        }
+
+        if (gender) {
+            filterConditions.push(
+                eq(athletes.gender, gender as typeof athletes.gender.enumValues[number])
+            );
+        }
+
+        if (weightClass) {
+            filterConditions.push(
+                eq(athletes.weightClass, weightClass as typeof athletes.weightClass.enumValues[number])
+            );
         }
 
         if (ageClass) {
@@ -59,11 +87,56 @@ router.get("/", async (req, res) => {
             filterConditions.push(lte(athletes.dateOfBirth, new Date(`${maxBirthYear}-12-31`)));
         }
 
+
+        const results = await db
+            .select({
+                ...getTableColumns(athletes),
+                payment: payments,
+                trainingBlock: trainingBlocks,
+            })
+            .from(athletes)
+            .leftJoin(payments, and(
+                eq(payments.athleteId, athletes.id),
+                eq(payments.isCurrent, true)
+            ))
+            .leftJoin(trainingBlocks, and(
+                eq(trainingBlocks.athleteId, athletes.id),
+                eq(trainingBlocks.isCurrent, true)
+            ))
+            .where(and(...filterConditions))
+            .orderBy(desc(athletes.isActive), sortOrder)
+            .limit(limitPerPage)
+            .offset(offset);
+
+        //joining payments based on iscurrent condtion, need to filter after
+        const filteredResults = paymentStatus
+            ? results.filter(r => r.payment?.paymentStatus === paymentStatus)
+            : results;
+
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(athletes)
+            .leftJoin(payments, and(
+                eq(payments.athleteId, athletes.id),
+                eq(payments.isCurrent, true)
+            ))
+            .where(and(...filterConditions));
+
+        const totalCount = countResult[0]?.count ?? 0;
+
+        res.status(200).json({
+            data: filteredResults,
+            page: currentPage,
+            limit: limitPerPage,
+            total: totalCount,
+            totalPages: Math.ceil(totalCount / limitPerPage)
+        });
+
     }
     catch (err) {
         console.log(`GET /athletes error ${err}`);
         // res.status(500).json({ message: "Internal server error" }); ////CHANGE BACK
-        res.status(500).json(`GET /athletes error ${err}`);
+        res.status(500).json(`GET /athletes error ${err}`); //del after ^
     }
 });
 

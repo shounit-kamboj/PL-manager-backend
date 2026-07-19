@@ -77,6 +77,7 @@ export const payments = pgTable('payments',{
     amountCAD: decimal('amount_in_cad', { precision: 5, scale: 2 }),
     dueDate: date('due_date' , { mode: 'date' }).notNull(),
     paymentStatus: paymentStatusEnum('payment_status').notNull().default('unpaid'),
+    isCurrent: boolean('is_current').default(true),
     ...timestamps
 });
 
@@ -120,6 +121,7 @@ export const trainingBlocks = pgTable('training_blocks',{
     daysBetweenUpdates: integer('days_till_updates').notNull(),
     sendPostBlockOverviewReminder: boolean('send_post_block_overview_reminder').default(false),
     link: varchar('link', { length: 200 }),
+    isCurrent: boolean('is_current').default(true),
     ...timestamps
 
 
