@@ -86,6 +86,9 @@ router.get("/", async (req, res) => {
             filterConditions.push(gte(athletes.dateOfBirth, new Date(`${minBirthYear}-01-01`)));
             filterConditions.push(lte(athletes.dateOfBirth, new Date(`${maxBirthYear}-12-31`)));
         }
+        if (paymentStatus) {
+            filterConditions.push(eq(payments.paymentStatus, paymentStatus as typeof payments.paymentStatus.enumValues[number]));
+        }
 
 
         const results = await db
@@ -108,10 +111,6 @@ router.get("/", async (req, res) => {
             .limit(limitPerPage)
             .offset(offset);
 
-        //joining payments based on iscurrent condtion, need to filter after
-        const filteredResults = paymentStatus
-            ? results.filter(r => r.payment?.paymentStatus === paymentStatus)
-            : results;
 
         const countResult = await db
             .select({ count: sql<number>`count(*)` })
@@ -125,7 +124,7 @@ router.get("/", async (req, res) => {
         const totalCount = countResult[0]?.count ?? 0;
 
         res.status(200).json({
-            data: filteredResults,
+            data: results,
             page: currentPage,
             limit: limitPerPage,
             total: totalCount,
