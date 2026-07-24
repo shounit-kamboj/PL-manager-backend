@@ -59,6 +59,8 @@ export const athletes = pgTable('athletes', {
     meetPrDeadlift: decimal('meet_pr_deadlift', { precision: 4, scale: 1 }),
     meetPrTotal: decimal('meet_pr_total', { precision: 5, scale: 1 }),
 
+    notes: varchar('notes', { length: 1000 }).notNull().default(''),
+
     link: varchar('link', { length: 200 }),
     joinedAt:  date('joined_at', { mode: 'date' }).notNull(),
     ...timestamps,
@@ -105,6 +107,7 @@ export const athletesAndCompetitions = pgTable('athletes_and_competitions', {
     date: date('date' , { mode: 'date' }),
     weighInTime: time('weigh_in_time'),
     equipment: equipmentEnum('equipment'),
+    isCurrent: boolean('is_current').default(true).notNull(),
     ...timestamps
 
 })
@@ -129,11 +132,11 @@ export const trainingBlocks = pgTable('training_blocks',{
 
 export const coachTasks = pgTable('coach_tasks', {
     id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-    coachId: integer('coach_id').notNull().references(
+    coachId: integer('coachId').notNull().references(
         () => coaches.id, { onDelete: 'cascade' }),
-    athleteId: integer('athlete_id').references(
+    athleteId: integer('athleteId').references(
         () => athletes.id, { onDelete: 'cascade' }),
-    trainingBlockId:integer('training_block_id').references(
+    trainingBlockId: integer('training_block_id').references(
         () => trainingBlocks.id, { onDelete: 'cascade' }),
     title: varchar('title', { length: 255 }).notNull(),
     description: varchar('description', { length: 255 }).notNull(),
