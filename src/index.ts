@@ -21,7 +21,7 @@ app.use(express.json());
 
 app.use('/api/athletes', athletesRouter)
 
-app.use('/api/athletesAndCompetitions', athletesAndCompetitionsRouter)
+app.use('/api/athlete-competitions', athletesAndCompetitionsRouter)
 
 app.use('/api/competitions', competitionsRouter)
 
