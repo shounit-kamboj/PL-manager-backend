@@ -24,8 +24,9 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        const currentPage = Math.max(1, +page);
-        const limitPerPage = Math.max(1, +limit);
+        const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
+        const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
+
         const offset = (currentPage - 1) * limitPerPage;
         const sortableColumns: Record<string, any> = {
             'dateOfBirth': athletes.dateOfBirth,
