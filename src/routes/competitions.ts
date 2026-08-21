@@ -1,6 +1,6 @@
 import express from 'express';
 import {competitions} from '../db/schema';
-import { and,  or, ilike, sql, gte} from 'drizzle-orm';
+import {and, or, ilike, sql, gte, eq} from 'drizzle-orm';
 import { db } from '../db';
 
 
@@ -11,11 +11,14 @@ router.get("/", async (req, res) => {
     try {
         const {
             search,
+            federation,
             sort,
             order,
             page = 1,
             limit = 10
         } = req.query;
+
+        console.log("Federation query:", federation);
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
@@ -36,6 +39,15 @@ router.get("/", async (req, res) => {
 
         if (search) {
             filterConditions.push(or(ilike(competitions.name, `%${search}%`)));
+        }
+
+        if (federation) {
+            filterConditions.push(
+                eq(
+                    competitions.federation,
+                    federation as typeof competitions.federation.enumValues[number]
+                )
+            );
         }
 
         const results = await db

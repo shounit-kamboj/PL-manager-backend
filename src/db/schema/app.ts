@@ -9,7 +9,7 @@ export const equipmentEnum = pgEnum('equipment_type',
     ['Classic/Raw', 'Equipped','both']);
 
 export const paymentStatusEnum = pgEnum('payment_statuses',
-    ['paid','unpaid','overdue']);
+    ['paid','unpaid','overdue','paid_late']);
 
 export const taskStatusEnum = pgEnum('task_status',
     ['pending', 'completed', 'overdue']);
@@ -51,6 +51,8 @@ export const athletes = pgTable('athletes', {
     province: varchar('province', { length: 100 }),
     timezone: varchar('timezone', { length: 100 }),
     equipment: equipmentEnum('equipment'),
+
+    paymnetPrice: decimal('payment_price',{precision: 4, scale: 1}),
 
     prSquat: decimal('pr_squat', { precision: 4, scale: 1 }),
     prBench: decimal('pr_bench', { precision: 4, scale: 1 }),
@@ -95,7 +97,7 @@ export const competitions =pgTable('competitions',{
     city: varchar('city', { length: 100 }),
     province: varchar('province', { length: 100 }),
     link: varchar('link', { length: 200 }),
-    fed: fedEnum('federation'),
+    federation: fedEnum('federation'),
     ...timestamps
 
 });

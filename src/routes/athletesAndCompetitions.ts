@@ -10,13 +10,14 @@ router.get("/", async (req, res) => {
     try {
         const {
             search,
+            federation,
             sort,
             order,
             page = 1,
             limit = 10
         } = req.query;
 
-
+        console.log("here");
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
 
@@ -43,6 +44,15 @@ router.get("/", async (req, res) => {
             filterConditions.push(or(ilike(athletes.name, `%${search}%`)));
         }
 
+        if (federation) {
+            filterConditions.push(
+                eq(
+                    competitions.federation,
+                    federation as typeof competitions.federation.enumValues[number]
+                )
+            );
+        }
+
         const results = await db
             .select({
                 ...getTableColumns(athletesAndCompetitions),
@@ -60,7 +70,14 @@ router.get("/", async (req, res) => {
         const countResult = await db
             .select({ count: sql<number>`count(*)` })
             .from(athletesAndCompetitions)
-            .leftJoin(athletes, eq(athletes.id, athletesAndCompetitions.athleteId))
+            .leftJoin(
+                athletes,
+                eq(athletes.id, athletesAndCompetitions.athleteId)
+            )
+            .leftJoin(
+                competitions,
+                eq(competitions.id, athletesAndCompetitions.compId)
+            )
             .where(and(...filterConditions));
 
         const totalCount = countResult[0]?.count ?? 0;
