@@ -1,6 +1,6 @@
 import express from 'express';
 import {athletesAndCompetitions, athletes, competitions, payments, trainingBlocks} from '../db/schema';
-import {eq, and, getTableColumns, or, ilike, sql, desc} from 'drizzle-orm';
+import {eq, and, getTableColumns, or, ilike, sql, desc, gte} from 'drizzle-orm';
 import { db } from '../db';
 
 const router = express.Router();
@@ -37,6 +37,7 @@ router.get("/", async (req, res) => {
 
         filterConditions.push(eq(athletes.deleted, false)); //only show current roster
         filterConditions.push(eq(athletesAndCompetitions.isCurrent,true)) //only show curr comps
+        filterConditions.push(gte(athletesAndCompetitions.date, sql`CURRENT_DATE`));
 
         if (search) {
             filterConditions.push(or(ilike(athletes.name, `%${search}%`)));
