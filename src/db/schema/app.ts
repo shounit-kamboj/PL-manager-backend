@@ -17,6 +17,9 @@ export const taskStatusEnum = pgEnum('task_status',
 export const weightClassEnum = pgEnum('weight_classes',['43','47','52','57','63','69','76','84','84+',
     '53','59','66','74','83','93','105','120','120+']);
 
+export const fedEnum = pgEnum('feds',['IPF','NAPF', 'COMMONWEALTHPF','CANPL','BCPA','APU', 'MPA', 'NBPL',
+    'NLPA', 'NSPL', 'OPA', 'PEIPLA', 'FQD', 'SPA'
+])
 
 //tables
 const timestamps = {
@@ -92,6 +95,7 @@ export const competitions =pgTable('competitions',{
     city: varchar('city', { length: 100 }),
     province: varchar('province', { length: 100 }),
     link: varchar('link', { length: 200 }),
+    fed: fedEnum('federation'),
     ...timestamps
 
 });
