@@ -2,6 +2,7 @@ import express from 'express';
 import athletesRouter from './routes/athletes';
 import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions';
 import competitionsRouter from './routes/competitions';
+import  paymentsRouter from './routes/payments'
 
 import cors from 'cors';
 
@@ -24,6 +25,8 @@ app.use('/api/athletes', athletesRouter)
 app.use('/api/athlete-competitions', athletesAndCompetitionsRouter)
 
 app.use('/api/competitions', competitionsRouter)
+
+app.use('/api/payments', paymentsRouter)
 
 
 

@@ -52,7 +52,8 @@ export const athletes = pgTable('athletes', {
     timezone: varchar('timezone', { length: 100 }),
     equipment: equipmentEnum('equipment'),
 
-    paymnetPrice: decimal('payment_price',{precision: 4, scale: 1}),
+    paymentPrice: decimal('payment_price',{precision: 4, scale: 1}),
+    paymentCycleLengthWeeks: integer('payment_cycle_length_weeks'),
 
     prSquat: decimal('pr_squat', { precision: 4, scale: 1 }),
     prBench: decimal('pr_bench', { precision: 4, scale: 1 }),
@@ -81,7 +82,6 @@ export const payments = pgTable('payments',{
         () => athletes.id, { onDelete: 'restrict'}),
     coachId: integer('coachId').notNull().references(
         () => coaches.id, { onDelete: 'restrict'}),
-    amountCAD: decimal('amount_in_cad', { precision: 5, scale: 2 }),
     dueDate: date('due_date' , { mode: 'date' }).notNull(),
     paymentStatus: paymentStatusEnum('payment_status').notNull().default('unpaid'),
     isCurrent: boolean('is_current').default(true),
