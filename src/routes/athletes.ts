@@ -1,5 +1,5 @@
 import express from 'express';
-import { athletes, payments, trainingBlocks} from '../db/schema';
+import { athletes } from '../db/schema';
 import { eq, and, or, ilike, gte, lte, sql, getTableColumns, desc } from 'drizzle-orm';
 import { db } from '../db';
 
@@ -17,7 +17,6 @@ router.get("/", async (req, res) => {
             gender,
             weightClass,
             ageClass,
-            paymentStatus,
             sort,
             order,
             page = 1,
@@ -31,8 +30,6 @@ router.get("/", async (req, res) => {
         const sortableColumns: Record<string, any> = {
             'dateOfBirth': athletes.dateOfBirth,
             'weightClass': athletes.weightClass,
-            'payment.dueDate': payments.dueDate,
-            'trainingBlock.nextUpdateDate': sql`${trainingBlocks.lastUpdate} + (${trainingBlocks.daysBetweenUpdates} * interval '1 day')`,
             'meetPrSquat': athletes.meetPrSquat,
             'meetPrBench': athletes.meetPrBench,
             'meetPrDeadlift': athletes.meetPrDeadlift,
@@ -86,39 +83,20 @@ router.get("/", async (req, res) => {
             filterConditions.push(gte(athletes.dateOfBirth, new Date(`${minBirthYear}-01-01`)));
             filterConditions.push(lte(athletes.dateOfBirth, new Date(`${maxBirthYear}-12-31`)));
         }
-        if (paymentStatus) {
-            filterConditions.push(eq(payments.paymentStatus, paymentStatus as typeof payments.paymentStatus.enumValues[number]));
-        }
-
 
         const results = await db
             .select({
                 ...getTableColumns(athletes),
-                payment: payments,
-                trainingBlock: trainingBlocks,
             })
             .from(athletes)
-            .leftJoin(payments, and(
-                eq(payments.athleteId, athletes.id),
-                eq(payments.isCurrent, true)
-            ))
-            .leftJoin(trainingBlocks, and(
-                eq(trainingBlocks.athleteId, athletes.id),
-                eq(trainingBlocks.isCurrent, true)
-            ))
             .where(and(...filterConditions))
             .orderBy(desc(athletes.isActive), sortOrder)
             .limit(limitPerPage)
             .offset(offset);
 
-
         const countResult = await db
             .select({ count: sql<number>`count(*)` })
             .from(athletes)
-            .leftJoin(payments, and(
-                eq(payments.athleteId, athletes.id),
-                eq(payments.isCurrent, true)
-            ))
             .where(and(...filterConditions));
 
         const totalCount = countResult[0]?.count ?? 0;
@@ -130,7 +108,6 @@ router.get("/", async (req, res) => {
             total: totalCount,
             totalPages: Math.ceil(totalCount / limitPerPage)
         });
-
     }
     catch (err) {
         console.log(`GET /athletes error ${err}`);
