@@ -3,6 +3,7 @@ import athletesRouter from './routes/athletes';
 import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions';
 import competitionsRouter from './routes/competitions';
 import  paymentsRouter from './routes/payments'
+import trainingBlocksRouter from './routes/trainingBlocks';
 
 import cors from 'cors';
 
@@ -27,6 +28,8 @@ app.use('/api/athlete-competitions', athletesAndCompetitionsRouter)
 app.use('/api/competitions', competitionsRouter)
 
 app.use('/api/payments', paymentsRouter)
+
+app.use('/api/training-blocks', trainingBlocksRouter);
 
 
 
