@@ -4,7 +4,7 @@ import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions';
 import competitionsRouter from './routes/competitions';
 import  paymentsRouter from './routes/payments'
 import trainingBlocksRouter from './routes/trainingBlocks';
-
+import securityMiddleware from './middleware/security'
 import cors from 'cors';
 
 const app = express();
@@ -20,6 +20,8 @@ app.use(cors({
 }))
 
 app.use(express.json());
+
+app.use(securityMiddleware)
 
 app.use('/api/athletes', athletesRouter)
 
