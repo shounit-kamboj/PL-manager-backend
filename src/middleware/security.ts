@@ -14,12 +14,16 @@ const securityMiddleware = async (
     }
 
     try {
-        const isAuthenticated = !!req.user;
+        // const isAuthenticated = !!req.user;
 
-        const limit = isAuthenticated ? 20 : 5;
-        const message = isAuthenticated
-            ? "Request limit exceeded (20 per minute). Slow down!"
-            : "Guest request limit exceeded (5 per minute). Please sign in.";
+        // const limit = isAuthenticated ? 20 : 5;
+        // const message = isAuthenticated
+        //     ? "Request limit exceeded (20 per minute). Slow down!"
+        //     : "Guest request limit exceeded (5 per minute). Please sign in.";
+
+        //temp until auth is done
+        const limit = 20
+        const message = "Guest request limit exceeded (5 per minute). Please sign in.";
 
         const client = aj.withRule(
             slidingWindow({
