@@ -1,7 +1,3 @@
-import { auth } from '../auth';
-
-type Session = typeof auth.$Infer.Session;
-
 declare global {
     namespace Express {
         interface Request {

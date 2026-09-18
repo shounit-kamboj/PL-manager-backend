@@ -1,7 +1,7 @@
 import express from 'express';
-import {athletesAndCompetitions, athletes, competitions, payments, trainingBlocks} from '../db/schema';
+import {athletesAndCompetitions, athletes, competitions, payments, trainingBlocks} from '../db/schema/index.js';
 import {eq, and, getTableColumns, or, ilike, sql, desc, gte} from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '../db/index.js';
 
 const router = express.Router();
 

@@ -2,15 +2,15 @@ import AgentAPI  from "apminsight";
 AgentAPI.config()
 
 import express from 'express';
-import athletesRouter from './routes/athletes';
-import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions';
-import competitionsRouter from './routes/competitions';
-import  paymentsRouter from './routes/payments'
-import trainingBlocksRouter from './routes/trainingBlocks';
-import securityMiddleware from './middleware/security'
+import athletesRouter from './routes/athletes.js';
+import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions.js';
+import competitionsRouter from './routes/competitions.js';
+import  paymentsRouter from './routes/payments.js'
+import trainingBlocksRouter from './routes/trainingBlocks.js';
+import securityMiddleware from './middleware/security.js'
 import cors from 'cors';
 import {toNodeHandler} from "better-auth/node";
-import {auth} from "./lib/auth";
+import {auth} from "./lib/auth.js";
 
 const app = express();
 const PORT = 8000;
