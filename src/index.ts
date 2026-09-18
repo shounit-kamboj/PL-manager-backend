@@ -1,3 +1,6 @@
+import AgentAPI  from "apminsight";
+AgentAPI.config()
+
 import express from 'express';
 import athletesRouter from './routes/athletes';
 import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions';
