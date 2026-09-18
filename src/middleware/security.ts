@@ -23,7 +23,7 @@ const securityMiddleware = async (
 
         //temp until auth is done
         const limit = 20
-        const message = "Guest request limit exceeded (5 per minute). Please sign in.";
+        const message = "Please slow down. Too many requests per minute.";
 
         const client = aj.withRule(
             slidingWindow({
