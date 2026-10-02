@@ -115,4 +115,87 @@ router.get("/", async (req, res) => {
     }
 });
 
+router.post("/", async (req, res) => {
+
+    try{
+
+        //todo:get the coach id here as well
+        const {
+            name,
+            gender,
+            weightClass,
+            dateOfBirth,
+            email,
+            phoneNumber,
+            country,
+            city,
+            province,
+            timezone,
+            equipment,
+            paymentPrice,
+            paymentCycleLengthWeeks,
+            prSquat,
+            prBench,
+            prDeadlift,
+            prTotal,
+            meetPrSquat,
+            meetPrBench,
+            meetPrDeadlift,
+            meetPrTotal,
+            notes,
+            link,
+            joinedAt,
+        } = req.body;
+
+        if(!name || !gender || !dateOfBirth || !joinedAt || !weightClass){
+            return res.status(400).json({ message: "Missing required fields: name, gender, weightClass, dateOfBirth" });
+        }
+
+        const [newAthlete] = await db
+            .insert(athletes)
+            .values({
+                coachId: 1, // TODO: req.user.id once auth is wired up
+                name,
+                gender,
+                weightClass,
+                dateOfBirth: new Date(dateOfBirth),
+                email,
+                phoneNumber,
+                country,
+                city,
+                province,
+                timezone,
+                equipment,
+                paymentPrice,
+                paymentCycleLengthWeeks,
+                prSquat,
+                prBench,
+                prDeadlift,
+                prTotal,
+                meetPrSquat,
+                meetPrBench,
+                meetPrDeadlift,
+                meetPrTotal,
+                notes,
+                link,
+                joinedAt: new Date(joinedAt),
+            })
+            .returning({ id: athletes.id });
+
+        if (!newAthlete) {
+            return res.status(500).json({ message: "Failed to create athlete" });
+        }
+
+        res.status(201).json({ data: newAthlete });
+    }
+    catch (e) {
+        console.error(`POST /athletes error ${e}`);
+        res.status(500).json({error: e})
+
+    }
+
+
+
+})
+
 export default router;
