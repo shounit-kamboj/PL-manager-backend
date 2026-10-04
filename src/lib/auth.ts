@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from "../db/schema/auth.js";
+import { sendEmail } from "./email.js";
 
 export const auth = betterAuth({
     secret: process.env.AUTH_SECRET!,
@@ -12,9 +13,13 @@ export const auth = betterAuth({
     }),
     emailAndPassword: {
         enabled: true,
+        sendResetPassword: async ({ user, url }) => {
+            console.log(`Reset link for ${user.email}: ${url}`);
+        },
+        revokeSessionsOnPasswordReset: true,
     },
     session: {
-        expiresIn: 60 * 60 * 24 * 1, // 1 days
+        expiresIn: 60 * 60 * 24 ,       // 1 day
         updateAge: 60 * 60 * 24,      // refresh once per day of activity
     },
 });
