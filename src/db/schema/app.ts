@@ -1,5 +1,6 @@
-import {timestamp, integer, varchar, pgTable, date, decimal, boolean,time,pgEnum} from "drizzle-orm/pg-core";
+import {timestamp, integer, varchar, pgTable, date, decimal, boolean,time,pgEnum, text} from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
+import { user } from "./auth.js";
 
 //Enums
 export const genderEnum = pgEnum('gender_type',
@@ -29,9 +30,7 @@ const timestamps = {
 
 export const coaches = pgTable('coaches',{
     id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-    name: varchar('name', {length: 255}).notNull(),
-    email: varchar('email', {length: 255}).notNull().unique(),
-    passwordHash: varchar('password_hash', {length: 255}).notNull(),
+    userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
     ...timestamps
 
 });
@@ -52,7 +51,7 @@ export const athletes = pgTable('athletes', {
     timezone: varchar('timezone', { length: 100 }),
     equipment: equipmentEnum('equipment'),
 
-    paymentPrice: decimal('payment_price',{precision: 4, scale: 1}),
+    paymentPrice: decimal('payment_price',{precision: 5, scale: 2}),
     paymentCycleLengthWeeks: integer('payment_cycle_length_weeks'),
 
     prSquat: decimal('pr_squat', { precision: 4, scale: 1 }),
@@ -153,7 +152,11 @@ export const coachTasks = pgTable('coach_tasks', {
 });
 
 //relationships
-export const coachesRelations = relations(coaches, ({ many }) => ({
+export const coachesRelations = relations(coaches, ({ one, many }) => ({
+    user: one(user, {
+        fields: [coaches.userId],
+        references: [user.id],
+    }),
     athletes: many(athletes),
     payments: many(payments),
     trainingBlocks: many(trainingBlocks),

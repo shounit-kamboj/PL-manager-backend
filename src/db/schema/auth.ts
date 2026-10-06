@@ -1,5 +1,3 @@
-// src/db/schema/auth.ts
-
 import { pgTable, text, boolean, timestamp, index, unique } from "drizzle-orm/pg-core";
 import { relations } from 'drizzle-orm';
 

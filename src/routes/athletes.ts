@@ -7,10 +7,10 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
     try {
-        ///CHNAGE LATER
-        // if (!req.user) {
-        //     return res.status(401).json({ message: "Unauthorized" });
-        // }
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
         const {
             search,
@@ -43,9 +43,9 @@ router.get("/", async (req, res) => {
 
         const filterConditions = [];
 
-        //CHANGE LATER
-        // filterConditions.push(eq(athletes.coachId, req.user.id));
-        filterConditions.push(eq(athletes.deleted, false)); //only show current roster
+        // only this coach's athletes, and only the current roster
+        filterConditions.push(eq(athletes.coachId, coachId));
+        filterConditions.push(eq(athletes.deleted, false));
 
         if (search) {
             filterConditions.push(or(ilike(athletes.name, `%${search}%`)));
@@ -99,7 +99,7 @@ router.get("/", async (req, res) => {
             .from(athletes)
             .where(and(...filterConditions));
 
-        const totalCount = countResult[0]?.count ?? 0;
+        const totalCount = Number(countResult[0]?.count ?? 0);
 
         res.status(200).json({
             data: results,
@@ -116,10 +116,12 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
-    try{
-
-        //todo:get the coach id here as well
         const {
             name,
             gender,
@@ -145,20 +147,26 @@ router.post("/", async (req, res) => {
             notes,
             link,
             joinedAt,
-        } = req.body;
+        } = req.body ?? {};
 
-        if(!name || !gender || !dateOfBirth || !joinedAt || !weightClass){
-            return res.status(400).json({ message: "Missing required fields: name, gender, weightClass, dateOfBirth" });
+        if (!name || !gender || !dateOfBirth || !joinedAt || !weightClass) {
+            return res.status(400).json({ message: "Missing required fields: name, gender, weightClass, dateOfBirth, joinedAt" });
+        }
+
+        const dob = new Date(dateOfBirth);
+        const joined = new Date(joinedAt);
+        if (Number.isNaN(dob.getTime()) || Number.isNaN(joined.getTime())) {
+            return res.status(400).json({ message: "Invalid date" });
         }
 
         const [newAthlete] = await db
             .insert(athletes)
             .values({
-                coachId: 1, // TODO: req.user.id once auth is wired up
+                coachId,
                 name,
                 gender,
                 weightClass,
-                dateOfBirth: new Date(dateOfBirth),
+                dateOfBirth: dob,
                 email,
                 phoneNumber,
                 country,
@@ -178,7 +186,7 @@ router.post("/", async (req, res) => {
                 meetPrTotal,
                 notes,
                 link,
-                joinedAt: new Date(joinedAt),
+                joinedAt: joined,
             })
             .returning({ id: athletes.id });
 
@@ -190,12 +198,8 @@ router.post("/", async (req, res) => {
     }
     catch (e) {
         console.error(`POST /athletes error ${e}`);
-        res.status(500).json({error: e})
-
+        res.status(500).json({ message: "Internal server error" });
     }
-
-
-
-})
+});
 
 export default router;

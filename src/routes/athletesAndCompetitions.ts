@@ -1,6 +1,6 @@
 import express from 'express';
-import {athletesAndCompetitions, athletes, competitions, payments, trainingBlocks} from '../db/schema/index.js';
-import {eq, and, getTableColumns, or, ilike, sql, desc, gte} from 'drizzle-orm';
+import {athletesAndCompetitions, athletes, competitions} from '../db/schema/index.js';
+import {eq, and, getTableColumns, or, ilike, sql, gte} from 'drizzle-orm';
 import { db } from '../db/index.js';
 
 const router = express.Router();
@@ -8,6 +8,11 @@ const router = express.Router();
 //show me all athcomps that are current, what user searchs for,sort by comp date
 router.get("/", async (req, res) => {
     try {
+
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+            }
         const {
             search,
             federation,
@@ -17,7 +22,6 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        console.log("here");
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
 
@@ -33,8 +37,7 @@ router.get("/", async (req, res) => {
 
         const filterConditions = [];
 
-        //CHANGE LATER
-        // filterConditions.push(eq(athletes.coachId, req.user.id));
+        filterConditions.push(eq(athletes.coachId, coachId));
 
         filterConditions.push(eq(athletes.deleted, false)); //only show current roster
         filterConditions.push(eq(athletesAndCompetitions.isCurrent,true)) //only show curr comps
@@ -80,7 +83,7 @@ router.get("/", async (req, res) => {
             )
             .where(and(...filterConditions));
 
-        const totalCount = countResult[0]?.count ?? 0;
+        const totalCount = Number(countResult[0]?.count ?? 0);
 
         res.status(200).json({
             data: results,

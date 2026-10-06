@@ -63,8 +63,8 @@ router.get("/", async (req, res) => {
             .from(competitions)
             .where(and(...filterConditions));
 
-        const totalCount = countResult[0]?.count ?? 0;
-
+        const totalCount = Number(countResult[0]?.count ?? 0);
+        
         res.status(200).json({
             data: results,
             page: currentPage,

@@ -1,15 +1,16 @@
 import express from 'express';
-import { payments, athletes } from '../db/schema';
-import { eq, and, or, ilike, sql, getTableColumns, asc, desc } from 'drizzle-orm';
+import { payments, athletes } from '../db/schema/index.js';
+import { eq, and, ilike, sql, getTableColumns } from 'drizzle-orm';
 import { db } from '../db/index.js';
 
 const router = express.Router();
 
 router.get("/", async (req, res) => {
     try {
-        // if (!req.user) {
-        //     return res.status(401).json({ message: "Unauthorized" });
-        // }
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
         const {
             search,
@@ -21,8 +22,8 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        const currentPage = Math.max(1, Number(page));
-        const limitPerPage = Math.min(100, Math.max(1, Number(limit) || 10));
+        const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
+        const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
         const offset = (currentPage - 1) * limitPerPage;
 
         const sortableColumns: Record<string, any> = {
@@ -36,6 +37,7 @@ router.get("/", async (req, res) => {
 
         const filterConditions = [];
 
+        filterConditions.push(eq(payments.coachId, coachId));
         filterConditions.push(eq(athletes.deleted, false));
 
         if (search) {
@@ -71,7 +73,7 @@ router.get("/", async (req, res) => {
             .leftJoin(athletes, eq(athletes.id, payments.athleteId))
             .where(and(...filterConditions));
 
-        const totalCount = countResult[0]?.count ?? 0;
+        const totalCount = Number(countResult[0]?.count ?? 0);
 
         res.status(200).json({
             data: results,

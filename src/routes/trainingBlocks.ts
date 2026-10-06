@@ -7,9 +7,10 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
     try {
-        // if (!req.user) {
-        //     return res.status(401).json({ message: "Unauthorized" });
-        // }
+        const coachId = req.coachId;
+        if (coachId === undefined){
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
         const {
             search,
@@ -39,6 +40,8 @@ router.get("/", async (req, res) => {
         const filterConditions = [];
 
         filterConditions.push(eq(athletes.deleted, false));
+        filterConditions.push(eq(athletes.coachId, coachId));
+
 
         if (search) {
             filterConditions.push(ilike(athletes.name, `%${search}%`));

@@ -11,6 +11,7 @@ import securityMiddleware from './middleware/security.js'
 import cors from 'cors';
 import {toNodeHandler} from "better-auth/node";
 import {auth} from "./lib/auth.js";
+import { requireAuth } from './middleware/requireAuth.js';
 
 const app = express();
 const PORT = 8000;
@@ -28,7 +29,7 @@ app.all('/api/auth/*splat', toNodeHandler(auth));
 
 app.use(express.json());
 
-app.use(securityMiddleware)
+app.use('/api', requireAuth, securityMiddleware);
 
 app.use('/api/athletes', athletesRouter)
 
