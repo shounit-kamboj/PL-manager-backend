@@ -202,4 +202,41 @@ router.post("/", async (req, res) => {
     }
 });
 
+router.put("/:id", async (req, res) => {
+
+});
+
+router.get("/:id", async (req, res) => {
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) {
+            return res.status(400).json({ message: "Invalid athlete id" });
+        }
+
+        const [athlete] = await db
+            .select()
+            .from(athletes)
+            .where(and(
+                eq(athletes.id, id),
+                eq(athletes.coachId, coachId),
+                eq(athletes.deleted, false)
+            ));
+
+        if (!athlete) {
+            return res.status(404).json({ message: "Athlete not found" });
+        }
+
+        res.status(200).json({ data: athlete });
+    }
+    catch (err) {
+        console.error(`GET /athletes/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 export default router;
