@@ -202,10 +202,92 @@ router.post("/", async (req, res) => {
     }
 });
 
+const orNull = (v: any) => (v === undefined || v === null || v === "" ? null : v); //to make empty cells not show wrong info
 router.put("/:id", async (req, res) => {
 
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({message: "Unauthorized"});
+        }
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) {
+            return res.status(400).json({message: "Invalid athlete id"});
+        }
+
+        const {
+            name, gender, weightClass, dateOfBirth, joinedAt,
+            email, phoneNumber, country, city, province, timezone, equipment,
+            paymentPrice, paymentCycleLengthWeeks,
+            prSquat, prBench, prDeadlift, prTotal,
+            meetPrSquat, meetPrBench, meetPrDeadlift, meetPrTotal,
+            notes, link, isActive,
+        } = req.body ?? {};
+
+        if (!name || !gender || !weightClass || !dateOfBirth || !joinedAt) {
+            return res.status(400).json({ message: "Missing required fields: name, gender, weightClass, dateOfBirth, joinedAt" });
+        }
+        if (!athletes.gender.enumValues.includes(gender)) {
+            return res.status(400).json({message: "Invalid gender"});
+        }
+        if (!athletes.weightClass.enumValues.includes(weightClass)) {
+            return res.status(400).json({message: "Invalid weight class"});
+        }
+        if (equipment && !athletes.equipment.enumValues.includes(equipment)) {
+            return res.status(400).json({message: "Invalid equipment"});
+        }
+
+        const dob = new Date(dateOfBirth);
+        const joined = new Date(joinedAt);
+        if (isNaN(dob.getTime()) || isNaN(joined.getTime())) {
+            return res.status(400).json({ message: "Invalid date" });
+        }
+
+        const [updated] = await db
+            .update(athletes)
+            .set({
+                name, gender, weightClass,
+                dateOfBirth: dob,
+                joinedAt: joined,
+                email: orNull(email),
+                phoneNumber: orNull(phoneNumber),
+                country: orNull(country),
+                city: orNull(city),
+                province: orNull(province),
+                timezone: orNull(timezone),
+                equipment: orNull(equipment),
+                paymentPrice: orNull(paymentPrice),
+                paymentCycleLengthWeeks: orNull(paymentCycleLengthWeeks),
+                prSquat: orNull(prSquat),
+                prBench: orNull(prBench),
+                prDeadlift: orNull(prDeadlift),
+                prTotal: orNull(prTotal),
+                meetPrSquat: orNull(meetPrSquat),
+                meetPrBench: orNull(meetPrBench),
+                meetPrDeadlift: orNull(meetPrDeadlift),
+                meetPrTotal: orNull(meetPrTotal),
+                notes: notes ?? "",
+                link: orNull(link),
+                ...(typeof isActive === "boolean" ? { isActive } : {}),
+            })
+            .where(and(eq(athletes.id, id), eq(athletes.coachId, coachId), eq(athletes.deleted, false)))
+            .returning();
+
+        if (!updated) return res.status(404).json({ message: "Athlete not found" });
+        res.status(200).json({ data: updated });
+
+
+
+    }
+    catch(e){
+        console.error(`put /athletes/:id error ${e}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
 
+
+//get one ath
 router.get("/:id", async (req, res) => {
     try {
         const coachId = req.coachId;
