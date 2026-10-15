@@ -41,6 +41,7 @@ router.get("/", async (req, res) => {
 
         filterConditions.push(eq(athletes.deleted, false)); //only show current roster
         filterConditions.push(eq(athletesAndCompetitions.isCurrent,true)) //only show curr comps
+        filterConditions.push(eq(athletesAndCompetitions.deleted, false));
         filterConditions.push(gte(athletesAndCompetitions.date, sql`CURRENT_DATE`));
 
         if (search) {
@@ -66,7 +67,7 @@ router.get("/", async (req, res) => {
             .leftJoin(athletes, eq(athletes.id, athletesAndCompetitions.athleteId))
             .leftJoin(competitions, eq(competitions.id, athletesAndCompetitions.compId))
             .where(and(...filterConditions))
-            .orderBy(sortOrder)
+            .orderBy(sortOrder, athletesAndCompetitions.id)
             .limit(limitPerPage)
             .offset(offset);
 

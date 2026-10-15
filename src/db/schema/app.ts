@@ -84,6 +84,8 @@ export const payments = pgTable('payments',{
     dueDate: date('due_date' , { mode: 'date' }).notNull(),
     paymentStatus: paymentStatusEnum('payment_status').notNull().default('unpaid'),
     isCurrent: boolean('is_current').default(true),
+    deleted: boolean('deleted').notNull().default(false),
+    deletedAt: timestamp('deleted_at'),
     ...timestamps
 });
 
@@ -113,6 +115,8 @@ export const athletesAndCompetitions = pgTable('athletes_and_competitions', {
     weighInTime: time('weigh_in_time'),
     equipment: equipmentEnum('equipment'),
     isCurrent: boolean('is_current').default(true).notNull(),
+    deleted: boolean('deleted').notNull().default(false),
+    deletedAt: timestamp('deleted_at'),
     ...timestamps
 
 })
@@ -130,6 +134,8 @@ export const trainingBlocks = pgTable('training_blocks',{
     sendPostBlockOverviewReminder: boolean('send_post_block_overview_reminder').default(false),
     link: varchar('link', { length: 200 }),
     isCurrent: boolean('is_current').default(true),
+    deleted: boolean('deleted').notNull().default(false),
+    deletedAt: timestamp('deleted_at'),
     ...timestamps
 
 

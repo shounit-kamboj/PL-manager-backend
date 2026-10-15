@@ -39,6 +39,7 @@ router.get("/", async (req, res) => {
 
         filterConditions.push(eq(payments.coachId, coachId));
         filterConditions.push(eq(athletes.deleted, false));
+        filterConditions.push(eq(payments.deleted, false));
 
         if (search) {
             filterConditions.push(ilike(athletes.name, `%${search}%`));
@@ -63,7 +64,7 @@ router.get("/", async (req, res) => {
             .from(payments)
             .leftJoin(athletes, eq(athletes.id, payments.athleteId))
             .where(and(...filterConditions))
-            .orderBy(sortOrder)
+            .orderBy(sortOrder,payments.id)
             .limit(limitPerPage)
             .offset(offset);
 

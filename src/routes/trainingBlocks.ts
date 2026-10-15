@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        const currentPage = Math.max(1, Number(page));
+        const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, Number(limit) || 10));
         const offset = (currentPage - 1) * limitPerPage;
 
@@ -41,6 +41,7 @@ router.get("/", async (req, res) => {
 
         filterConditions.push(eq(athletes.deleted, false));
         filterConditions.push(eq(athletes.coachId, coachId));
+        filterConditions.push(eq(trainingBlocks.deleted, false));
 
 
         if (search) {
@@ -59,7 +60,7 @@ router.get("/", async (req, res) => {
             .from(trainingBlocks)
             .leftJoin(athletes, eq(athletes.id, trainingBlocks.athleteId))
             .where(and(...filterConditions))
-            .orderBy(sortOrder)
+            .orderBy(sortOrder, trainingBlocks.id)
             .limit(limitPerPage)
             .offset(offset);
 
