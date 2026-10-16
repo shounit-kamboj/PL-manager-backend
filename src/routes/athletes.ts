@@ -321,4 +321,27 @@ router.get("/:id", async (req, res) => {
     }
 });
 
+router.delete("/:id", async (req, res) => {
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const [deletedAthlete] = await db
+            .update(athletes)
+            .set({ deleted: true, deletedAt: new Date(), isActive: false})
+            .where(and(eq(athletes.id, id), eq(athletes.coachId, coachId),eq(athletes.deleted, false)))
+            .returning({ id: athletes.id });
+
+        if (!deletedAthlete) return res.status(404).json({ message: "Not found" });
+
+        res.status(200).json({ data: deletedAthlete });
+    } catch (err) {
+        console.error(`DELETE /<resource>/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 export default router;

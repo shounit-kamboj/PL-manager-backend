@@ -99,6 +99,10 @@ export const competitions =pgTable('competitions',{
     province: varchar('province', { length: 100 }),
     link: varchar('link', { length: 200 }),
     federation: fedEnum('federation'),
+    createdByCoachId: integer('created_by_coach_id').references(
+        () => coaches.id, { onDelete: 'restrict' }),
+    deleted: boolean('deleted').notNull().default(false),
+    deletedAt: timestamp('deleted_at'),
     ...timestamps
 
 });
