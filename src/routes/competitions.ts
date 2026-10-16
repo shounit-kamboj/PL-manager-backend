@@ -2,6 +2,7 @@ import express from 'express';
 import {competitions, athletesAndCompetitions} from '../db/schema/index.js';
 import {and, or, ilike, sql, gte, lt, gt, eq, isNull, getTableColumns} from 'drizzle-orm';
 import { db } from '../db/index.js';
+import { todaySql } from '../lib/today.js';
 
 
 const router = express.Router();
@@ -110,7 +111,7 @@ router.get("/", async (req, res) => {
             )
         );
 
-        filterConditions.push(gte(competitions.endDate, sql`CURRENT_DATE`));
+        filterConditions.push(gte(competitions.endDate, todaySql(req)));
 
         if (search) {
             filterConditions.push(or(ilike(competitions.name, `%${search}%`)));
