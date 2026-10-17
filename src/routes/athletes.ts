@@ -5,6 +5,8 @@ import { db } from '../db/index.js';
 
 const router = express.Router();
 
+
+
 router.get("/", async (req, res) => {
     try {
         const coachId = req.coachId;

@@ -86,8 +86,6 @@ router.get("/", async (req, res) => {
             limit = 10
         } = req.query;
 
-        console.log("Federation query:", federation);
-
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
 
@@ -110,6 +108,9 @@ router.get("/", async (req, res) => {
                 eq(competitions.createdByCoachId, coachId)
             )
         );
+
+        // hide soft-deleted competitions
+        filterConditions.push(eq(competitions.deleted, false));
 
         filterConditions.push(gte(competitions.endDate, todaySql(req)));
 
@@ -191,7 +192,11 @@ router.put("/:id", async (req, res) => {
         if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
 
         const [existing] = await db.select({ id: competitions.id }).from(competitions)
-            .where(and(eq(competitions.id, id), eq(competitions.createdByCoachId, coachId)));
+            .where(and(
+                eq(competitions.id, id),
+                eq(competitions.createdByCoachId, coachId),
+                eq(competitions.deleted, false),
+            ));
         if (!existing) return res.status(404).json({ message: "Competition not found" });
 
         const parsed = parseCompetitionBody(req.body);
@@ -219,13 +224,62 @@ router.put("/:id", async (req, res) => {
 
         const [updated] = await db.update(competitions)
             .set(values)
-            .where(and(eq(competitions.id, id), eq(competitions.createdByCoachId, coachId)))
+            .where(and(
+                eq(competitions.id, id),
+                eq(competitions.createdByCoachId, coachId),
+                eq(competitions.deleted, false),
+            ))
             .returning();
 
         if (!updated) return res.status(404).json({ message: "Competition not found" });
         res.status(200).json({ data: updated });
     } catch (err) {
         console.error(`PUT /competitions/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// soft delete one of THIS coach's custom competitions (blocked while meet entries still use it)
+router.delete("/:id", async (req, res) => {
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const ownLive = and(
+            eq(competitions.id, id),
+            eq(competitions.createdByCoachId, coachId),
+            eq(competitions.deleted, false),
+        );
+
+        const [existing] = await db.select({ id: competitions.id }).from(competitions).where(ownLive);
+        if (!existing) return res.status(404).json({ message: "Competition not found" });
+
+        // refuse while live meet entries still use it
+        const [inUse] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(athletesAndCompetitions)
+            .where(and(
+                eq(athletesAndCompetitions.compId, id),
+                eq(athletesAndCompetitions.deleted, false),
+            ));
+        const usedBy = Number(inUse?.count ?? 0);
+        if (usedBy > 0) {
+            return res.status(409).json({
+                message: `${usedBy} meet ${usedBy === 1 ? "entry uses" : "entries use"} this competition. Delete ${usedBy === 1 ? "it" : "them"} first.`,
+            });
+        }
+
+        const [row] = await db.update(competitions)
+            .set({ deleted: true, deletedAt: new Date() })
+            .where(ownLive)
+            .returning({ id: competitions.id });
+
+        if (!row) return res.status(404).json({ message: "Competition not found" });
+        res.status(200).json({ data: row });
+    } catch (err) {
+        console.error(`DELETE /competitions/:id error ${err}`);
         res.status(500).json({ message: "Internal server error" });
     }
 });
