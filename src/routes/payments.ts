@@ -1,6 +1,6 @@
 import express from 'express';
 import { payments, athletes } from '../db/schema/index.js';
-import { eq, and, ilike, sql, getTableColumns } from 'drizzle-orm';
+import { eq, and, ilike, sql, getTableColumns,inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 
 const router = express.Router();
@@ -15,7 +15,6 @@ type PaymentInput = {
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// true if a Postgres unique-violation (23505), whether Drizzle wrapped it in .cause or not
 const isUniqueViolation = (err: unknown): boolean => {
     const codeOf = (e: unknown): unknown =>
         typeof e === "object" && e !== null && "code" in e
@@ -152,12 +151,42 @@ router.get("/", async (req, res) => {
     catch (err) {
         console.log(`GET /payments error ${err}`);
         res.status(500).json({ message: "Internal server error" });
+
     }
 });
 
 // one payment, with athlete name
 router.get("/:id", async (req, res) => {
     // TODO: 401, validate id (400), query scoped by coachId + not deleted, 404 if missing
+    try{
+        const coachId =  req.coachId;
+        if(coachId == undefined)  return res.status(401).json({ message: "Unauthorized" });
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const [row] = await db
+            .select({
+                ...getTableColumns(payments),
+                athleteName: athletes.name,
+                amount: athletes.paymentPrice,
+            })
+            .from(payments)
+            .leftJoin(athletes, eq(athletes.id,payments.athleteId))
+            .where(and(
+                eq(payments.id, id),
+                eq(payments.coachId, coachId),
+                eq(payments.deleted, false),
+            ));
+
+        if (!row) return res.status(404).json({ message: "Payment not found" });
+        res.status(200).json({ data: row });
+    }
+    catch (err) {
+        console.error(`GET /payments/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+        
+    }
 });
 
 // create a payment; the athlete's previous current payment becomes not current
@@ -178,6 +207,23 @@ router.post("/", async (req, res) => {
         const athlete = await findOwnedAthlete(athleteId, coachId);
         if (!athlete) return res.status(404).json({ message: "Athlete not found" });
 
+        // block a new payment while the athlete's current one is still unpaid or overdue
+        const [openPayment] = await db
+            .select({ id: payments.id, paymentStatus: payments.paymentStatus })
+            .from(payments)
+            .where(and(
+                eq(payments.athleteId, athleteId),
+                eq(payments.isCurrent, true),
+                eq(payments.deleted, false),
+                inArray(payments.paymentStatus, ["unpaid", "overdue"]),
+            ));
+
+        if (openPayment) {
+            return res.status(409).json({
+                message: `This athlete's current payment is still ${openPayment.paymentStatus}. Mark it as paid (or delete it) before adding a new one.`,
+            });
+        }
+
         // one atomic batch: statement 1 turns the old current payment off,
         // statement 2 inserts the new one (order matters for the unique index)
         const [, inserted] = await db.batch([
@@ -190,9 +236,9 @@ router.post("/", async (req, res) => {
                 )),
             db.insert(payments)
                 .values({
-                    ...values,        // dueDate (no paymentStatus in create mode, DB default is 'unpaid')
-                    athleteId,        // already checked above
-                    coachId,          // from the session, never from the body
+                    ...values,
+                    athleteId,
+                    coachId,
                     isCurrent: true,
                 })
                 .returning(),
@@ -210,19 +256,69 @@ router.post("/", async (req, res) => {
     }
 });
 
-// edit a payment (due date, status, etc.; athlete is not editable)
+// edit a payment (due date and status; athlete is not editable)
 router.put("/:id", async (req, res) => {
-    // TODO: 401, validate id (400), parsePaymentBody (400)
-    // TODO: update where id, coachId, deleted = false, returning; 404 if no row
-    // TODO: 200 { data }
-});
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
 
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const parsedInfo = parsePaymentBody(req.body, "edit");
+        if ("error" in parsedInfo) return res.status(400).json({ message: parsedInfo.error });
+        const { values } = parsedInfo;
+
+        const [updatedPayment] = await db
+            .update(payments)
+            .set(values)
+            .where(and(
+                eq(payments.id, id),
+                eq(payments.coachId, coachId),
+                eq(payments.deleted, false),
+            ))
+            .returning();
+
+        if (!updatedPayment) return res.status(404).json({ message: "Payment not found" });
+
+        res.status(200).json({ data: updatedPayment });
+    }
+    catch (err) {
+        console.error(`PUT /payments/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
 // soft delete a payment
 router.delete("/:id", async (req, res) => {
-    // TODO: 401, validate id (400)
-    // TODO: set deleted = true, deletedAt = new Date(), isCurrent = false (scoped by coachId); 404 if no row
-    // TODO: decide whether to promote the athlete's most recent remaining payment to current
-    // TODO: 200 { data: { id } }
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) return res.status(401).json({message: "Unauthorized"});
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({message: "Invalid id"});
+
+        const [row] = await db
+            .update(payments)
+            .set({deleted: true, deletedAt: new Date(), isCurrent: false})
+            .where(and(
+                eq(payments.id, id),
+                eq(payments.coachId, coachId),
+                eq(payments.deleted, false),
+            ))
+            .returning({id: payments.id});
+
+        if (!row) return res.status(404).json({message: "Payment not found"});
+        res.status(200).json({data: row});
+    }
+    catch (err) {
+        console.error(`DELETE /payments/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+
+    }
+
+
 });
 
 
