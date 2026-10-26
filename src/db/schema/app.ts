@@ -131,6 +131,7 @@ export const trainingBlocks = pgTable('training_blocks',{
         () => athletes.id, { onDelete: 'restrict'}),
     coachId: integer('coachId').notNull().references(
         () => coaches.id, { onDelete: 'restrict'}),
+    name: varchar('name', { length: 100 }).notNull(),
     startDate: date('start_date' , { mode: 'date' }).notNull(),
     endDate: date('end_date' , { mode: 'date' }).notNull(),
     lastUpdate: date('last_update' , { mode: 'date' }).notNull(),
