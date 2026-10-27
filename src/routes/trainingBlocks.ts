@@ -1,6 +1,6 @@
 import express from 'express';
 import { trainingBlocks, athletes } from '../db/schema/index.js';
-import { eq, and, ilike, sql, getTableColumns, or, gt, lt } from 'drizzle-orm';
+import { eq, and, ilike, sql, getTableColumns, or, gt, lt, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
 
 const router = express.Router();
@@ -302,23 +302,97 @@ router.post("/", async (req, res) => {
 
 });
 
-// edit a training block (athlete is not editable)
 router.put("/:id", async (req, res) => {
-    // TODO: 401, validate id (400), parseTrainingBlockBody (400)
-    // TODO: update where id, coachId, deleted = false, returning; 404 if no row
-    // TODO: 200 { data }
+    try {
+        const coachId = req.coachId;
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
 
-//
-//     const isPast = values.endDate < clientToday(req.body?.today);
-//
-// .set(isPast ? { ...values, isCurrent: false } : values)
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const parsedInfo = parseTrainingBlockBody(req.body);
+        if ("error" in parsedInfo) return res.status(400).json({ message: parsedInfo.error });
+        const { values } = parsedInfo;
+
+        const [existing] = await db
+            .select({ id: trainingBlocks.id, athleteId: trainingBlocks.athleteId })
+            .from(trainingBlocks)
+            .where(and(
+                eq(trainingBlocks.id, id),
+                eq(trainingBlocks.coachId, coachId),
+                eq(trainingBlocks.deleted, false),
+            ));
+        if (!existing) return res.status(404).json({ message: "Training block not found" });
+
+        // the new dates can't overlap the athlete's other blocks (this block excluded)
+        const [overlap] = await db
+            .select({ id: trainingBlocks.id, name: trainingBlocks.name })
+            .from(trainingBlocks)
+            .where(and(
+                eq(trainingBlocks.athleteId, existing.athleteId),
+                eq(trainingBlocks.coachId, coachId),
+                eq(trainingBlocks.deleted, false),
+                ne(trainingBlocks.id, id),
+                gt(trainingBlocks.endDate, values.startDate),
+                lt(trainingBlocks.startDate, values.endDate),
+            ));
+        if (overlap) {
+            return res.status(409).json({
+                message: `These dates overlap "${overlap.name}". Change the dates or edit that block first.`,
+            });
+        }
+
+        const isPast = values.endDate < clientToday(req.body?.today);
+
+        const [updatedBlock] = await db
+            .update(trainingBlocks)
+            .set(isPast ? { ...values, isCurrent: false } : values)
+            .where(and(
+                eq(trainingBlocks.id, id),
+                eq(trainingBlocks.coachId, coachId),
+                eq(trainingBlocks.deleted, false),
+            ))
+            .returning();
+
+        if (!updatedBlock) return res.status(404).json({ message: "Training block not found" });
+
+        res.status(200).json({ data: updatedBlock });
+    }
+    catch (err) {
+        console.error(`PUT /training-blocks/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
-
 // soft delete a training block
 router.delete("/:id", async (req, res) => {
-    // TODO: 401, validate id (400)
-    // TODO: set deleted = true, deletedAt = new Date(), isCurrent = false (scoped by coachId); 404 if no row
-    // TODO: 200 { data: { id } }
+    try{
+        const coachId = req.coachId;
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
+
+        const [deletedBlock] = await db
+            .update(trainingBlocks)
+            .set({ deleted: true, deletedAt: new Date(), isCurrent:false })
+            .where(and(
+                eq(trainingBlocks.id, id),
+                eq(trainingBlocks.coachId, coachId),
+                eq(trainingBlocks.deleted, false),
+            ))
+            .returning({ id: trainingBlocks.id });
+
+        if (!deletedBlock) return res.status(404).json({ message: "Training block not found" });
+
+        res.status(200).json({ data: deletedBlock });
+
+
+    }
+    catch (err) {
+        console.error(`DELETE /training-blocks/:id error ${err}`);
+        res.status(500).json({ message: "Internal server error" });
+    }
+
 });
 
 export default router;
