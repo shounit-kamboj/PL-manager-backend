@@ -2,6 +2,7 @@ import express from 'express';
 import { payments, athletes } from '../db/schema/index.js';
 import { eq, and, ilike, sql, getTableColumns,inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
+import { daySql } from "../lib/today.js";
 
 const router = express.Router();
 
@@ -271,9 +272,21 @@ router.put("/:id", async (req, res) => {
         if ("error" in parsedInfo) return res.status(400).json({ message: parsedInfo.error });
         const { values } = parsedInfo;
 
+
+
+        const paidAtChange =
+            values.paymentStatus === undefined
+                ? {}
+                : {
+                    paidAt:
+                        values.paymentStatus === "paid" || values.paymentStatus === "paid_late"
+                            ? sql`COALESCE(${payments.paidAt}, ${daySql(req.body?.today)})`
+                            : null,
+                };
+
         const [updatedPayment] = await db
             .update(payments)
-            .set(values)
+            .set({ ...values, ...paidAtChange })
             .where(and(
                 eq(payments.id, id),
                 eq(payments.coachId, coachId),

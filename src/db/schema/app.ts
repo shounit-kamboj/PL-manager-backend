@@ -86,6 +86,7 @@ export const payments = pgTable('payments',{
     isCurrent: boolean('is_current').default(true),
     deleted: boolean('deleted').notNull().default(false),
     deletedAt: timestamp('deleted_at'),
+    paidAt: date('paid_at', { mode: 'date' }),
     ...timestamps
 });
 
