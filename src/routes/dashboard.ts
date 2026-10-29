@@ -1,5 +1,8 @@
 import express from "express";
-import { isValidDay, clampDays } from "../lib/today.js";
+import { and, asc, between, eq, gte, sql } from "drizzle-orm";
+import { db } from "../db/index.js";
+import {athletes, athletesAndCompetitions, competitions} from "../db/schema/index.js";
+import { isValidDay, clampDays, daySql } from "../lib/today.js";
 
 const router = express.Router();
 
@@ -17,9 +20,62 @@ router.get("/", async (req, res) => {
         const meetDays = clampDays(req.query.meetDays, DEFAULT_MEET_DAYS);
         const blockDays = clampDays(req.query.blockDays, DEFAULT_BLOCK_DAYS);
 
-        //
+        const monthStart = sql`date_trunc('month', ${daySql(today)}::timestamp)::date`;
 
-        // temporary: echo the inputs back so we can test the plumbing
+
+        const isActive = sql`(${athletes.isActive} AND NOT ${athletes.deleted})`;
+
+        const athleteQuery = db
+            .select({
+                activeAthletes: sql<number>`COUNT(*) FILTER (WHERE ${isActive})`.mapWith(Number),
+                mrr: sql<number>`ROUND(COALESCE(SUM(${athletes.paymentPrice} / ${athletes.paymentCycleLengthWeeks} * 52 / 12) FILTER (WHERE ${isActive} AND ${athletes.paymentCycleLengthWeeks} > 0), 0), 2)`.mapWith(Number),
+                athleteRetentionYears:sql<number>`ROUND(
+            COALESCE(
+                AVG(
+                    CASE
+                        WHEN ${athletes.deleted}
+                        THEN ${athletes.deletedAt}::date - ${athletes.joinedAt}
+                        ELSE ${daySql(today)} - ${athletes.joinedAt}
+                    END
+                )::numeric / 365.25 .
+            0), 2)`.mapWith(Number),
+            })
+            .from(athletes)
+            .where(eq(athletes.coachId, coachId));
+
+        const [athleteStats] = await athleteQuery;
+
+        const inWindow = between(athletesAndCompetitions.date, daySql(today), sql`${daySql(today)} + ${meetDays}::int`);
+
+
+        const athleteCompetitionsQuery = db
+            .select({
+                numMyAthletesCompetitions: sql<number>`COUNT(*) FILTER (WHERE ${inWindow})`.mapWith(Number),
+            })
+            .from(athletesAndCompetitions)
+            .where(and(
+                eq(athletesAndCompetitions.coachId, coachId),
+                eq(athletesAndCompetitions.isCurrent, true),
+                eq(athletesAndCompetitions.deleted, false),
+            ));
+
+        const nextMeetQuery = db
+            .select({
+                nextAthleteMeetDate: athletesAndCompetitions.date,
+                nextAthleteMeetName: competitions.name,
+            })
+            .from(athletesAndCompetitions)
+            .innerJoin(competitions, eq(athletesAndCompetitions.compId, competitions.id))
+            .where(and(
+                eq(athletesAndCompetitions.coachId, coachId),
+                eq(athletesAndCompetitions.isCurrent, true),
+                eq(athletesAndCompetitions.deleted, false),
+                gte(athletesAndCompetitions.date, daySql(today)),
+            ))
+            .orderBy(asc(athletesAndCompetitions.date), asc(competitions.name))
+            .limit(1);
+
+
         return res.status(200).json({ coachId, today, meetDays, blockDays });
     } catch (err) {
         console.error(`GET /dashboard error ${err}`);
