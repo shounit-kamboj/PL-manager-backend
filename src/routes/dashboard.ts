@@ -8,6 +8,7 @@ const router = express.Router();
 
 const DEFAULT_MEET_DAYS = 30; // "meets in the next X days", meetdays = x
 const DEFAULT_BLOCK_DAYS = 4; // "blocks due in the next Y days", blockdays = y
+const DEFAULT_RETENTION_TIME_PERIOD_DIVSOR = 365.25; //
 
 router.get("/", async (req, res) => {
     try {
@@ -19,6 +20,8 @@ router.get("/", async (req, res) => {
 
         const meetDays = clampDays(req.query.meetDays, DEFAULT_MEET_DAYS);
         const blockDays = clampDays(req.query.blockDays, DEFAULT_BLOCK_DAYS);
+        //1 for days,7 for weeks, 30.44 for months, 365.25 for years (default is years)
+        const retentionTimePeriodDivisor = clampDays(req.query.retentionTimePeriodDivisor, DEFAULT_RETENTION_TIME_PERIOD_DIVSOR);
 
         const monthStart = sql`date_trunc('month', ${daySql(today)}::timestamp)::date`;
 
@@ -29,7 +32,7 @@ router.get("/", async (req, res) => {
             .select({
                 activeAthletes: sql<number>`COUNT(*) FILTER (WHERE ${isActive})`.mapWith(Number),
                 mrr: sql<number>`ROUND(COALESCE(SUM(${athletes.paymentPrice} / ${athletes.paymentCycleLengthWeeks} * 52 / 12) FILTER (WHERE ${isActive} AND ${athletes.paymentCycleLengthWeeks} > 0), 0), 2)`.mapWith(Number),
-                athleteRetentionYears:sql<number>`ROUND(
+                athleteRetentionTime:sql<number>`ROUND(
             COALESCE(
                 AVG(
                     CASE
@@ -37,7 +40,7 @@ router.get("/", async (req, res) => {
                         THEN ${athletes.deletedAt}::date - ${athletes.joinedAt}
                         ELSE ${daySql(today)} - ${athletes.joinedAt}
                     END
-                )::numeric / 365.25 .
+                )::numeric / ${retentionTimePeriodDivisor} .
             0), 2)`.mapWith(Number),
             })
             .from(athletes)

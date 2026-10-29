@@ -21,7 +21,7 @@ export const todaySql = (req: Request) => daySql(req.query.today);
 
 // A whole number of days from the browser, made safe: bad or missing input gives the fallback,
 // and anything else is clamped into min..max.
-export const clampDays = (value: unknown, fallback: number, min = 1, max = 365): number => {
+export const clampDays = (value: unknown, fallback: number, min = 1, max = 365.25): number => {
     if (typeof value === "string" && value.trim() === "") return fallback;
     const n = typeof value === "string" ? Number(value) : value;
     if (typeof n !== "number" || !Number.isInteger(n)) return fallback;
