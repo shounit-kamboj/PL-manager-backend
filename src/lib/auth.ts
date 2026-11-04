@@ -2,7 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from "../db/schema/auth.js";
-import { sendEmail } from "./email.js";
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_KEY);
 
 export const auth = betterAuth({
     secret: process.env.AUTH_SECRET!,
@@ -15,6 +17,14 @@ export const auth = betterAuth({
         enabled: true,
         sendResetPassword: async ({ user, url }) => {
             console.log(`Reset link for ${user.email}: ${url}`);
+            resend.emails.send({
+                from: 'onboarding@resend.dev',
+                to: 'shoun7777@gmail.com',
+                subject: 'CollarPL Password Reset',
+                html: `<p>Hello ${user.name},</p> ` +
+                    `<p><a href="${url}">Reset your CollarPL password here.</a></p>`+
+                    `<p>If you didn't ask to reset your password, you can safely ignore this email—your current password will remain unchanged.</p>`
+            });
         },
         revokeSessionsOnPasswordReset: true,
     },
