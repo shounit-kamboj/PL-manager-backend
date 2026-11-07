@@ -18,8 +18,8 @@ export const auth = betterAuth({
         sendResetPassword: async ({ user, url }) => {
             console.log(`Reset link for ${user.email}: ${url}`);
             resend.emails.send({
-                from: 'onboarding@resend.dev',
-                to: 'shoun7777@gmail.com',
+                from: 'no-reply@collarpl.com',
+                to: user.email,
                 subject: 'CollarPL Password Reset',
                 html: `<p>Hello ${user.name},</p> ` +
                     `<p><a href="${url}">Reset your CollarPL password here.</a></p>`+
