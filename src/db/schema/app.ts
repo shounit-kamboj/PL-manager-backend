@@ -19,7 +19,7 @@ export const weightClassEnum = pgEnum('weight_classes',['43','47','52','57','63'
     '53','59','66','74','83','93','105','120','120+']);
 
 export const fedEnum = pgEnum('feds',['IPF','NAPF', 'COMMONWEALTHPF','CANPL','BCPA','APU', 'MPA', 'NBPL',
-    'NLPA', 'NSPL', 'OPA', 'PEIPLA', 'FQD', 'SPA'
+    'NLPA', 'NSPL', 'OPA', 'PEIPLA', 'FQD', 'SPA', 'USAPL', 'PA'
 ])
 
 //tables
