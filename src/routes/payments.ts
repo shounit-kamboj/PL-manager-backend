@@ -12,6 +12,7 @@ type PaymentStatus = typeof PAYMENT_STATUSES[number];
 type PaymentInput = {
     dueDate: Date;
     paymentStatus?: PaymentStatus; // only present in edit mode
+    createNextAutomatically?: boolean; // optional: DB default (false) applies on create, unchanged on edit
 };
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -35,7 +36,7 @@ const parsePaymentBody = (
     body: any,
     mode: "create" | "edit",
 ): { error: string } | { values: PaymentInput } => {
-    const { dueDate, paymentStatus } = body ?? {};
+    const { dueDate, paymentStatus, createNextAutomatically } = body ?? {};
 
     // due date: required, yyyy-mm-dd (a full ISO string is accepted and trimmed to the day)
     const day = typeof dueDate === "string" ? dueDate.slice(0, 10) : "";
@@ -44,9 +45,14 @@ const parsePaymentBody = (
         return { error: "A valid due date is required (yyyy-mm-dd)" };
     }
 
+    // auto-create: may be left out, but if sent it must be a real boolean
+    if (createNextAutomatically !== undefined && typeof createNextAutomatically !== "boolean") {
+        return { error: "createNextAutomatically must be true or false" };
+    }
+
     // create: status is never taken from the body; the DB default ('unpaid') applies
     if (mode === "create") {
-        return { values: { dueDate: due } };
+        return { values: { dueDate: due, createNextAutomatically } };
     }
 
     // edit: status is required and must be a real enum value
@@ -54,7 +60,7 @@ const parsePaymentBody = (
         return { error: "A valid payment status is required" };
     }
 
-    return { values: { dueDate: due, paymentStatus: paymentStatus as PaymentStatus } };
+    return { values: { dueDate: due, paymentStatus: paymentStatus as PaymentStatus, createNextAutomatically } };
 };
 
 // confirm the athlete exists, belongs to this coach and is not deleted
@@ -81,6 +87,7 @@ router.get("/", async (req, res) => {
             search,
             paymentStatus,
             isCurrent,
+            createNextAutomatically,
             sort,
             order,
             page = 1,
@@ -118,6 +125,10 @@ router.get("/", async (req, res) => {
 
         if (isCurrent !== undefined) {
             filterConditions.push(eq(payments.isCurrent, isCurrent === 'true'));
+        }
+
+        if (createNextAutomatically !== undefined) {
+            filterConditions.push(eq(payments.createNextAutomatically, createNextAutomatically === 'true'));
         }
 
         const results = await db
@@ -158,10 +169,9 @@ router.get("/", async (req, res) => {
 
 // one payment, with athlete name
 router.get("/:id", async (req, res) => {
-    // TODO: 401, validate id (400), query scoped by coachId + not deleted, 404 if missing
     try{
         const coachId =  req.coachId;
-        if(coachId == undefined)  return res.status(401).json({ message: "Unauthorized" });
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
 
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid id" });
@@ -186,7 +196,7 @@ router.get("/:id", async (req, res) => {
     catch (err) {
         console.error(`GET /payments/:id error ${err}`);
         res.status(500).json({ message: "Internal server error" });
-        
+
     }
 });
 

@@ -87,6 +87,7 @@ export const payments = pgTable('payments',{
     deleted: boolean('deleted').notNull().default(false),
     deletedAt: timestamp('deleted_at'),
     paidAt: date('paid_at', { mode: 'date' }),
+    createNextAutomatically: boolean("create_next_automatically").notNull().default(false),
     ...timestamps
 });
 
@@ -142,6 +143,7 @@ export const trainingBlocks = pgTable('training_blocks',{
     isCurrent: boolean('is_current').default(true),
     deleted: boolean('deleted').notNull().default(false),
     deletedAt: timestamp('deleted_at'),
+    createNextAutomatically: boolean("create_next_automatically").notNull().default(false),
     ...timestamps
 
 

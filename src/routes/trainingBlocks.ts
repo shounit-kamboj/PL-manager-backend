@@ -15,6 +15,7 @@ type TrainingBlockInput = {
     lastUpdate: Date;
     daysBetweenUpdates: number;
     link: string | null;
+    createNextAutomatically?: boolean; // optional: DB default (false) applies on create, unchanged on edit
 };
 
 // "2026-10-25" (or a full ISO string) -> Date, or null if it isn't a real date
@@ -33,7 +34,7 @@ const clientToday = (v: unknown): Date =>
 const parseTrainingBlockBody = (
     body: any,
 ): { error: string } | { values: TrainingBlockInput } => {
-    const { name, startDate, endDate, lastUpdate, daysBetweenUpdates, link } = body ?? {};
+    const { name, startDate, endDate, lastUpdate, daysBetweenUpdates, link, createNextAutomatically } = body ?? {};
 
     // name: required, trimmed, max 100
     const cleanName = typeof name === "string" ? name.trim() : "";
@@ -68,6 +69,11 @@ const parseTrainingBlockBody = (
         return { error: "max 200 characters" };
     }
 
+    // auto-create: may be left out, but if sent it must be a real boolean
+    if (createNextAutomatically !== undefined && typeof createNextAutomatically !== "boolean") {
+        return { error: "createNextAutomatically must be true or false" };
+    }
+
     return {
         values: {
             name: cleanName,
@@ -76,6 +82,7 @@ const parseTrainingBlockBody = (
             lastUpdate: last,
             daysBetweenUpdates: days,
             link: cleanLink,
+            createNextAutomatically,
         },
     };
 };
@@ -117,6 +124,7 @@ router.get("/", async (req, res) => {
         const {
             search,
             isCurrent,
+            createNextAutomatically,
             sort,
             order,
             page = 1,
@@ -157,6 +165,10 @@ router.get("/", async (req, res) => {
             filterConditions.push(eq(trainingBlocks.isCurrent, isCurrent === 'true'));
         }
 
+        if (createNextAutomatically !== undefined) {
+            filterConditions.push(eq(trainingBlocks.createNextAutomatically, createNextAutomatically === 'true'));
+        }
+
         const results = await db
             .select({
                 ...getTableColumns(trainingBlocks),
@@ -175,7 +187,7 @@ router.get("/", async (req, res) => {
             .leftJoin(athletes, eq(athletes.id, trainingBlocks.athleteId))
             .where(and(...filterConditions));
 
-        const totalCount = countResult[0]?.count ?? 0;
+        const totalCount = Number(countResult[0]?.count ?? 0);
 
         res.status(200).json({
             data: results,
@@ -228,10 +240,9 @@ router.get("/:id", async (req, res) => {
 
 // create a training block; the athlete's previous current block becomes past
 router.post("/", async (req, res) => {
-    // TODO: 401 if no coachId
     try{
         const coachId = req.coachId;
-        if(coachId == undefined) return res.status(401).json({ message: "Unauthorized" });
+        if (coachId === undefined) return res.status(401).json({ message: "Unauthorized" });
 
         const parsedInfo = parseTrainingBlockBody(req.body);
         if ("error" in parsedInfo) return res.status(400).json({ message: parsedInfo.error });
