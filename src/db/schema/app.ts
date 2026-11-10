@@ -22,6 +22,8 @@ export const fedEnum = pgEnum('feds',['IPF','NAPF', 'COMMONWEALTHPF','CANPL','BC
     'NLPA', 'NSPL', 'OPA', 'PEIPLA', 'FQD', 'SPA', 'USAPL', 'PA'
 ])
 
+export const highestQualEnum = pgEnum('highest_qual_enum', ['Local','Provincial/State', 'Regional', 'National'])
+
 //tables
 const timestamps = {
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -63,6 +65,8 @@ export const athletes = pgTable('athletes', {
     meetPrBench: decimal('meet_pr_bench', { precision: 4, scale: 1 }),
     meetPrDeadlift: decimal('meet_pr_deadlift', { precision: 4, scale: 1 }),
     meetPrTotal: decimal('meet_pr_total', { precision: 5, scale: 1 }),
+
+    highestQual: highestQualEnum('highest_qualified').notNull().default('Local'),
 
     notes: varchar('notes', { length: 1000 }).notNull().default(''),
 
