@@ -5,7 +5,7 @@ import { db } from '../db/index.js';
 
 const router = express.Router();
 
-
+const QUAL_LEVELS = athletes.highestQual.enumValues;
 
 router.get("/", async (req, res) => {
     try {
@@ -19,6 +19,8 @@ router.get("/", async (req, res) => {
             gender,
             weightClass,
             ageClass,
+            highestQual,
+            highestQualAndAbove,
             sort,
             order,
             page = 1,
@@ -62,6 +64,18 @@ router.get("/", async (req, res) => {
         if (weightClass) {
             filterConditions.push(
                 eq(athletes.weightClass, weightClass as typeof athletes.weightClass.enumValues[number])
+            );
+        }
+
+        if (highestQual !== undefined) {
+            if (typeof highestQual !== "string" || !QUAL_LEVELS.includes(highestQual as typeof QUAL_LEVELS[number])) {
+                return res.status(400).json({ message: "Invalid qualification level" });
+            }
+            const level = highestQual as typeof QUAL_LEVELS[number];
+            filterConditions.push(
+                highestQualAndAbove === "true"
+                    ? gte(athletes.highestQual, level)
+                    : eq(athletes.highestQual, level)
             );
         }
 
@@ -146,6 +160,7 @@ router.post("/", async (req, res) => {
             meetPrBench,
             meetPrDeadlift,
             meetPrTotal,
+            highestQual,
             notes,
             link,
             joinedAt,
@@ -153,6 +168,9 @@ router.post("/", async (req, res) => {
 
         if (!name || !gender || !dateOfBirth || !joinedAt || !weightClass) {
             return res.status(400).json({ message: "Missing required fields: name, gender, weightClass, dateOfBirth, joinedAt" });
+        }
+        if (highestQual !== undefined && !QUAL_LEVELS.includes(highestQual)) {
+            return res.status(400).json({ message: "Invalid qualification level" });
         }
 
         const dob = new Date(dateOfBirth);
@@ -171,6 +189,7 @@ router.post("/", async (req, res) => {
                 dateOfBirth: dob,
                 email,
                 phoneNumber,
+                highestQual,
                 country,
                 city,
                 province,
@@ -223,7 +242,7 @@ router.put("/:id", async (req, res) => {
             email, phoneNumber, country, city, province, timezone, equipment,
             paymentPrice, paymentCycleLengthWeeks,
             prSquat, prBench, prDeadlift, prTotal,
-            meetPrSquat, meetPrBench, meetPrDeadlift, meetPrTotal,
+            meetPrSquat, meetPrBench, meetPrDeadlift, meetPrTotal, highestQual,
             notes, link, isActive,
         } = req.body ?? {};
 
@@ -238,6 +257,9 @@ router.put("/:id", async (req, res) => {
         }
         if (equipment && !athletes.equipment.enumValues.includes(equipment)) {
             return res.status(400).json({message: "Invalid equipment"});
+        }
+        if (highestQual !== undefined && !QUAL_LEVELS.includes(highestQual)) {
+            return res.status(400).json({ message: "Invalid qualification level" });
         }
 
         const dob = new Date(dateOfBirth);
@@ -272,6 +294,7 @@ router.put("/:id", async (req, res) => {
                 notes: notes ?? "",
                 link: orNull(link),
                 ...(typeof isActive === "boolean" ? { isActive } : {}),
+                ...(highestQual !== undefined ? { highestQual } : {}),
             })
             .where(and(eq(athletes.id, id), eq(athletes.coachId, coachId), eq(athletes.deleted, false)))
             .returning();
