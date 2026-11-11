@@ -31,15 +31,15 @@ export async function markOverduePayments(): Promise<number> {
     return updated.length;
 }
 
-async function main() {
-    try {
-        const count = await markOverduePayments();
-        console.log(`markOverduePayments: ${count} payment(s) marked overdue`);
-        process.exit(0);
-    } catch (err) {
-        console.error(`markOverduePayments failed: ${err}`);
-        process.exit(1);
-    }
-}
-
-void main();
+// async function main() {
+//     try {
+//         const count = await markOverduePayments();
+//         console.log(`markOverduePayments: ${count} payment(s) marked overdue`);
+//         process.exit(0);
+//     } catch (err) {
+//         console.error(`markOverduePayments failed: ${err}`);
+//         process.exit(1);
+//     }
+// }
+//
+// void main();

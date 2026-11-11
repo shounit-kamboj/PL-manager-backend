@@ -7,7 +7,7 @@ import athletesAndCompetitionsRouter from './routes/athletesAndCompetitions.js';
 import competitionsRouter from './routes/competitions.js';
 import  paymentsRouter from './routes/payments.js'
 import trainingBlocksRouter from './routes/trainingBlocks.js';
-import dashboardRouter from "./routes/dashboard";
+import dashboardRouter from "./routes/dashboard.js";
 import securityMiddleware from './middleware/security.js'
 import cors from 'cors';
 import {toNodeHandler} from "better-auth/node";

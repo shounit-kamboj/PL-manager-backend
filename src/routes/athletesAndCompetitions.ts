@@ -1,10 +1,13 @@
 import express from 'express';
 import {athletesAndCompetitions, athletes, competitions} from '../db/schema/index.js';
-import {eq, and, getTableColumns, or, ilike, sql, gte, isNull} from 'drizzle-orm';
+import {eq, and, getTableColumns, or, ilike, sql, gte, lt, isNull} from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { todaySql } from '../lib/today.js';
 
 const router = express.Router();
+
+// list filter values: worked out from the entry's date, never stored
+const ENTRY_STATUSES = ["upcoming", "past"];
 
 //show me all athcomps that are current, what user searchs for,sort by comp date
 router.get("/", async (req, res) => {
@@ -17,11 +20,16 @@ router.get("/", async (req, res) => {
         const {
             search,
             federation,
+            status = "upcoming",
             sort,
             order,
             page = 1,
             limit = 10
         } = req.query;
+
+        if (typeof status !== "string" || !ENTRY_STATUSES.includes(status)) {
+            return res.status(400).json({ message: "Invalid status" });
+        }
 
         const currentPage = Math.max(1, parseInt(String(page), 10) || 1);
         const limitPerPage = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
@@ -41,9 +49,14 @@ router.get("/", async (req, res) => {
         filterConditions.push(eq(athletes.coachId, coachId));
 
         filterConditions.push(eq(athletes.deleted, false)); //only show current roster
-        filterConditions.push(eq(athletesAndCompetitions.isCurrent,true)) //only show curr comps
         filterConditions.push(eq(athletesAndCompetitions.deleted, false));
-        filterConditions.push(gte(athletesAndCompetitions.date, todaySql(req)));
+        // upcoming (the default) = meet date is today or later; past = meet date is before today.
+        // the date and the coach's own "today" decide this, not the isCurrent flag
+        filterConditions.push(
+            status === "past"
+                ? lt(athletesAndCompetitions.date, todaySql(req))
+                : gte(athletesAndCompetitions.date, todaySql(req))
+        );
 
 
         if (search) {

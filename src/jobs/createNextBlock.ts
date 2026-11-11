@@ -86,4 +86,4 @@ export async function createNextBlocks(): Promise<number> {
     return created;
 }
 
-void createNextBlocks().then(n => { console.log(`created ${n}`); process.exit(0); });
+// void createNextBlocks().then(n => { console.log(`created ${n}`); process.exit(0); });

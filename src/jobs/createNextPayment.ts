@@ -78,4 +78,4 @@ export async function createNextPayments(): Promise<number> {
     return created;
 }
 
-void createNextPayments().then(n => { console.log(`created ${n}`); process.exit(0); });
+// void createNextPayments().then(n => { console.log(`created ${n}`); process.exit(0); });
