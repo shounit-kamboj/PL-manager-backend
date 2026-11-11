@@ -89,7 +89,7 @@ router.get("/", async (req, res) => {
 
         const paymentQuery = db
             .select({
-                numOverduePayments: sql<number>`COUNT(*) FILTER (WHERE ${payments.paymentStatus} = 'overdue' AND ${payments.isCurrent})`.mapWith(Number),
+                numOverduePayments: sql<number>`COUNT(*) FILTER (WHERE ${payments.paymentStatus} = 'overdue' AND ${payments.isCurrent} AND ${isActive})`.mapWith(Number),
                 moneyMadeMonth: sql<number>`ROUND(COALESCE(SUM(${athletes.paymentPrice}) FILTER (WHERE ${payments.paymentStatus} IN ('paid', 'paid_late') AND date_trunc('month', ${payments.paidAt}) = ${monthStart}), 0), 2)`.mapWith(Number),
             })
             .from(payments)

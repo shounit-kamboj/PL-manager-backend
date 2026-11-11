@@ -18,7 +18,7 @@ function addDays(date: Date, days: number): Date {
     return result;
 }
 
-export async function createNextBlocks(): Promise<number> {
+export async function createNextBlocks(): Promise<{ created: number; failed: number }> {
     const today = bcToday();
 
     // 1. find the blocks that need renewing
@@ -42,6 +42,8 @@ export async function createNextBlocks(): Promise<number> {
         ));
 
     let created = 0;
+    // rows that threw: reported to runJobs so the run exits as failed
+    let failed = 0;
 
     // 2. renew them one at a time
     for (const { block: old } of toRenew) {
@@ -80,10 +82,11 @@ export async function createNextBlocks(): Promise<number> {
             created++;
         } catch (err) {
             console.error(`createNextBlocks: block ${old.id} failed: ${err}`);
+            failed++;
         }
     }
 
-    return created;
+    return { created, failed };
 }
 
 // void createNextBlocks().then(n => { console.log(`created ${n}`); process.exit(0); });

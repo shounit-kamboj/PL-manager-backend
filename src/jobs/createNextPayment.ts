@@ -20,7 +20,7 @@ function addDays(date: Date, days: number): Date {
     return result;
 }
 
-export async function createNextPayments(): Promise<number> {
+export async function createNextPayments(): Promise<{ created: number; failed: number }> {
     const today = bcToday();
 
     // 1. find the payments that need renewing
@@ -34,6 +34,8 @@ export async function createNextPayments(): Promise<number> {
         .where(and(
             eq(payments.isCurrent, true),
             eq(payments.createNextAutomatically, true),
+            // only renew once the old one is settled: unpaid and overdue payments are left alone
+            inArray(payments.paymentStatus, ["paid", "paid_late"]),
             // TODO: only ones whose cycle has ended
             lt(payments.dueDate, sql`${today}::date`),
             eq(athletes.deleted, false),
@@ -41,6 +43,8 @@ export async function createNextPayments(): Promise<number> {
             eq(payments.deleted, false),
         ));
     let created = 0;
+    // rows that threw: reported to runJobs so the run exits as failed
+    let failed = 0;
 
     // 2. renew them one at a time
     for (const { payment: old, cycleWeeks } of toRenew) {
@@ -53,7 +57,6 @@ export async function createNextPayments(): Promise<number> {
                     .where(and(
                         eq(payments.id, old.id),
                         eq(payments.isCurrent, true),
-                        inArray(payments.paymentStatus, ["paid", "paid_late"]),
                     )),
 
                 // create the next one
@@ -72,10 +75,11 @@ export async function createNextPayments(): Promise<number> {
         } catch (err) {
             // one bad payment shouldn't stop the rest
             console.error(`createNextPayments: payment ${old.id} failed: ${err}`);
+            failed++;
         }
     }
 
-    return created;
+    return { created, failed };
 }
 
 // void createNextPayments().then(n => { console.log(`created ${n}`); process.exit(0); });

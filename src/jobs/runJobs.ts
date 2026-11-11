@@ -11,15 +11,17 @@ async function main() {
     let failed = false;
 
     try {
-        const count = await createNextPayments();
-        console.log(`createNextPayments: ${count}`);
+        const result = await createNextPayments();
+        console.log(`createNextPayments: ${result.created} created, ${result.failed} failed`);
+        if (result.failed > 0) failed = true;
     } catch (err) {
         console.error(`createNextPayments failed: ${err}`);
         failed = true;
     }
     try {
-        const count = await createNextBlocks();
-        console.log(`createNextBlocks: ${count}`);
+        const result = await createNextBlocks();
+        console.log(`createNextBlocks: ${result.created} created, ${result.failed} failed`);
+        if (result.failed > 0) failed = true;
     } catch (err) {
         console.error(`createNextBlocks failed: ${err}`);
         failed = true;
