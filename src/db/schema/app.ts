@@ -144,7 +144,7 @@ export const trainingBlocks = pgTable('training_blocks',{
     daysBetweenUpdates: integer('days_till_updates').notNull(),
     sendPostBlockOverviewReminder: boolean('send_post_block_overview_reminder').default(false),
     link: varchar('link', { length: 200 }),
-    isCurrent: boolean('is_current').default(true),
+    isCurrent: boolean('is_current').default(true), //newest block not ness the current date
     deleted: boolean('deleted').notNull().default(false),
     deletedAt: timestamp('deleted_at'),
     createNextAutomatically: boolean("create_next_automatically").notNull().default(false),

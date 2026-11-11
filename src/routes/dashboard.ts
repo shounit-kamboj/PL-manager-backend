@@ -1,5 +1,5 @@
 import express from "express";
-import { and, asc, between, eq, gte, sql } from "drizzle-orm";
+import { and, asc, between, eq, gt, gte, lte, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {athletes, athletesAndCompetitions, competitions, payments, trainingBlocks} from "../db/schema/index.js";
 import { isValidDay, clampDays, daySql } from "../lib/today.js";
@@ -47,11 +47,11 @@ router.get("/", async (req, res) => {
                 AVG(
                     CASE
                         WHEN ${athletes.deleted}
-                        THEN ${athletes.deletedAt}::date - ${athletes.joinedAt}
-                        ELSE ${daySql(today)} - ${athletes.joinedAt}
-                    END
+                THEN ${athletes.deletedAt}::date - ${athletes.joinedAt}
+                ELSE ${daySql(today)} - ${athletes.joinedAt}
+                END
                 )::numeric /${retentionDivisor}::numeric,
-            0), 2)`.mapWith(Number),
+                0), 2)`.mapWith(Number),
             })
             .from(athletes)
             .where(eq(athletes.coachId, coachId));
@@ -104,10 +104,15 @@ router.get("/", async (req, res) => {
                 numBlockToUpdate: sql<number>`COUNT(*)`.mapWith(Number),
             })
             .from(trainingBlocks)
+            .innerJoin(athletes, eq(trainingBlocks.athleteId, athletes.id))
             .where(and(
                 eq(trainingBlocks.coachId, coachId),
-                eq(trainingBlocks.isCurrent, true),
                 eq(trainingBlocks.deleted, false),
+                // skip blocks that belong to inactive or deleted athletes
+                isActive,
+                // only blocks running today: isCurrent now means "newest block", so the dates decide
+                lte(trainingBlocks.startDate, daySql(today)),
+                gt(trainingBlocks.endDate, daySql(today)),
                 // next update date falls on or before the end of the window
                 sql`${trainingBlocks.lastUpdate} + ${trainingBlocks.daysBetweenUpdates} <= ${daySql(today)} + ${blockDays}::int`,
             ));

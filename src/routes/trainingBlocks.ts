@@ -1,11 +1,15 @@
 import express from 'express';
 import { trainingBlocks, athletes } from '../db/schema/index.js';
-import { eq, and, ilike, sql, getTableColumns, or, gt, lt, ne } from 'drizzle-orm';
+import { eq, and, ilike, sql, getTableColumns, or, gt, lt, lte, ne, desc } from 'drizzle-orm';
 import { db } from '../db/index.js';
+import { todaySql } from '../lib/today.js';
 
 const router = express.Router();
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// list filter values: worked out from the block's dates, never stored
+const BLOCK_STATUSES = ["current", "upcoming", "past"];
 
 // validate and clean req.body for create and edit; return { error } or { values }
 type TrainingBlockInput = {
@@ -27,9 +31,6 @@ const parseDayStr = (v: unknown): Date | null => {
     }
     return d;
 };
-// the client's local date if valid, else today's UTC date, as a Date at midnight
-const clientToday = (v: unknown): Date =>
-    parseDayStr(v) ?? new Date(new Date().toISOString().slice(0, 10));
 
 const parseTrainingBlockBody = (
     body: any,
@@ -123,7 +124,7 @@ router.get("/", async (req, res) => {
 
         const {
             search,
-            isCurrent,
+            status,
             createNextAutomatically,
             sort,
             order,
@@ -161,8 +162,21 @@ router.get("/", async (req, res) => {
             ));
         }
 
-        if (isCurrent !== undefined) {
-            filterConditions.push(eq(trainingBlocks.isCurrent, isCurrent === 'true'));
+        // current / upcoming / past come from the dates and the coach's own "today" (?today=).
+        // A block's end date is the day the next one starts, so a block counts as past on that day.
+        if (status !== undefined) {
+            if (typeof status !== "string" || !BLOCK_STATUSES.includes(status)) {
+                return res.status(400).json({ message: "Invalid status" });
+            }
+            const today = todaySql(req);
+            if (status === "current") {
+                filterConditions.push(lte(trainingBlocks.startDate, today));
+                filterConditions.push(gt(trainingBlocks.endDate, today));
+            } else if (status === "upcoming") {
+                filterConditions.push(gt(trainingBlocks.startDate, today));
+            } else {
+                filterConditions.push(lte(trainingBlocks.endDate, today));
+            }
         }
 
         if (createNextAutomatically !== undefined) {
@@ -238,7 +252,7 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-// create a training block; the athlete's previous current block becomes past
+// create a training block; if it is the athlete's newest one, it takes the isCurrent flag
 router.post("/", async (req, res) => {
     try{
         const coachId = req.coachId;
@@ -273,10 +287,20 @@ router.post("/", async (req, res) => {
             });
         }
 
-        const isPast = values.endDate < clientToday(req.body?.today);
+        // isCurrent marks the athlete's newest block (by start date), not whether it is running today
+        const [newest] = await db
+            .select({ startDate: trainingBlocks.startDate })
+            .from(trainingBlocks)
+            .where(and(
+                eq(trainingBlocks.athleteId, athleteId),
+                eq(trainingBlocks.coachId, coachId),
+                eq(trainingBlocks.deleted, false),
+            ))
+            .orderBy(desc(trainingBlocks.startDate))
+            .limit(1);
 
-        if (isPast) {
-            // an already-ended block is saved as past and leaves the current block alone
+        if (newest && values.startDate <= newest.startDate) {
+            // a back-entered older block is saved without the flag and leaves the newest block alone
             const [created] = await db
                 .insert(trainingBlocks)
                 .values({ ...values, athleteId, coachId, isCurrent: false })
@@ -353,11 +377,10 @@ router.put("/:id", async (req, res) => {
             });
         }
 
-        const isPast = values.endDate < clientToday(req.body?.today);
-
+        // editing never changes isCurrent: only creating a newer block (or the renewal job) does
         const [updatedBlock] = await db
             .update(trainingBlocks)
-            .set(isPast ? { ...values, isCurrent: false } : values)
+            .set(values)
             .where(and(
                 eq(trainingBlocks.id, id),
                 eq(trainingBlocks.coachId, coachId),
