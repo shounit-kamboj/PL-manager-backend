@@ -46,6 +46,7 @@ router.get("/", async (req, res) => {
             COALESCE(
                 AVG(
                     CASE
+                        WHEN ${athletes.joinedAt} > ${daySql(today)} THEN NULL
                         WHEN ${athletes.deleted}
                 THEN ${athletes.deletedAt}::date - ${athletes.joinedAt}
                 ELSE ${daySql(today)} - ${athletes.joinedAt}
