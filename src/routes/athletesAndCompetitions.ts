@@ -60,7 +60,11 @@ router.get("/", async (req, res) => {
 
 
         if (search) {
-            filterConditions.push(or(ilike(athletes.name, `%${search}%`)));
+            filterConditions.push(or(
+                ilike(athletes.name, `%${search}%`),
+                ilike(competitions.name, `%${search}%`)
+
+            ));
         }
 
         if (federation) {
