@@ -15,6 +15,8 @@ export const auth = betterAuth({
     }),
     emailAndPassword: {
         enabled: true,
+        requireEmailVerification: true,
+        revokeSessionsOnPasswordReset: true,
         sendResetPassword: async ({ user, url }) => {
             resend.emails.send({
                 from: 'no-reply@collarpl.com',
@@ -25,10 +27,20 @@ export const auth = betterAuth({
                     `<p>If you didn't ask to reset your password, you can safely ignore this email—your current password will remain unchanged.</p>`
             });
         },
-        revokeSessionsOnPasswordReset: true,
+    },
+    emailVerification: {
+        sendOnSignIn: true,
+        sendVerificationEmail: async ({ user, url }) => {
+            resend.emails.send({
+                from: 'no-reply@collarpl.com',
+                to: user.email,
+                subject: "Verify your email address",
+                text: `Click the link to verify your email: ${url}`,
+            });
+        },
     },
     session: {
-        expiresIn: 60 * 60 * 24 ,       // 1 day
+        expiresIn: 60 * 60 * 24,       // 1 day
         updateAge: 60 * 60 * 6,      // refresh 4 times per day of activity
     },
 });
