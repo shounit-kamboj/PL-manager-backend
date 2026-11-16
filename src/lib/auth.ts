@@ -3,6 +3,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db/index.js";
 import * as schema from "../db/schema/auth.js";
 import { Resend } from 'resend';
+import {coaches} from "../db/schema/index.js";
+import {eq} from "drizzle-orm";
 
 const resend = new Resend(process.env.RESEND_KEY);
 
@@ -37,6 +39,27 @@ export const auth = betterAuth({
                 subject: "Verify your email address",
                 text: `Click the link to verify your email: ${url}`,
             });
+        },
+    },
+
+    user: {
+        deleteUser: {
+            enabled: true,
+            deleteTokenExpiresIn: 60 * 60, // link lasts 1 hour (default is 24 hours)
+            sendDeleteAccountVerification: async ({ user, url }) => {
+                void resend.emails.send({
+                    from: 'no-reply@collarpl.com',
+                    to: user.email,
+                    subject: 'Confirm deleting your CollarPL account',
+                    html: `<p><a href="${url}">Permanently delete your CollarPL account</a>. ` +
+                        `This deletes all your athletes and data and can't be undone. The link expires in 1 hour.</p>` +
+                        `<p>Open this link in the browser where you’re signed in to CollarPL</p>`+
+                        `<p>If you didn't ask for this, change your password.</p>`,
+                });
+            },
+            beforeDelete: async (user) => {
+                await db.delete(coaches).where(eq(coaches.userId, user.id));
+            },
         },
     },
 
