@@ -39,6 +39,8 @@ export const auth = betterAuth({
             });
         },
     },
+
+
     session: {
         expiresIn: 60 * 60 * 24,       // 1 day
         updateAge: 60 * 60 * 6,      // refresh 4 times per day of activity
