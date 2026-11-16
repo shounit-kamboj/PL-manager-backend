@@ -47,7 +47,7 @@ app.use('/api/dashboard', dashboardRouter);
 
 
 app.get("/", (req: express.Request, res: express.Response) => {
-  res.send("Hello, welcome to CollarPL API!");
+  res.send("Hello, you can now go to collarpl.com !");
 })
 
 app.listen(PORT, () => {
