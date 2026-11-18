@@ -5,9 +5,9 @@
 // What this file shows:
 //   - describe / it / expect, the three building blocks of every test
 //   - it.each, one test body run over a table of inputs
-//   - it.todo, a named test you still have to write (it shows as "todo" in the output)
 //
-// To write a todo: change  it.todo("name")  into  it("name", () => { ... })
+// The empty tests are still to be written: add an expect(...) inside each one.
+// An empty test passes, so it shows as green until you fill it in.
 //
 // Not tested here: daySql and todaySql. They only wrap the result of isValidDay in a piece
 // of SQL, so the rule worth testing is isValidDay.
@@ -27,12 +27,39 @@ describe("isValidDay", () => {
         expect(isValidDay("2026-02-31")).toBe(false);
     });
 
-    it.todo("accepts a leap day in a leap year: 2028-02-29");
-    it.todo("rejects a leap day in a non-leap year: 2026-02-29");
-    it.todo("rejects the wrong format: 11/11/2026");
-    it.todo("rejects missing zero padding: 2026-1-5");
-    it.todo("rejects a full timestamp: 2026-11-11T00:00:00.000Z");
-    it.todo("rejects an empty string");
+    it("accepts a leap day in a leap year: 2028-02-29", () => {
+        expect(isValidDay("2028-02-29")).toBe(true);
+
+    });
+
+    it("rejects a leap day in a non-leap year: 2026-02-29", () => {
+        expect(isValidDay("2026-02-29")).toBe(false);
+
+    });
+
+    it("rejects the wrong format: 11/11/2026", () => {
+        expect(isValidDay("11/11/2026")).toBe(false);
+
+    });
+
+    it("rejects missing zero padding: 2026-1-5", () => {
+        expect(isValidDay("1/5/2026")).toBe(false);
+
+    });
+
+    it("rejects a full timestamp: 2026-11-11T00:00:00.000Z", () => {
+        expect(isValidDay("2026-11-11T00:00:00.000Z")).toBe(false);
+
+    });
+
+    it("rejects an empty string", () => {
+        expect(isValidDay("")).toBe(false);
+
+    });
+    it("rejects a space filled string", () => {
+        expect(isValidDay("   ")).toBe(false);
+
+    });
 
     // WORKED EXAMPLE: it.each runs the same test once per row, and %s puts the label in the name.
     // The value comes from a browser, so it can be anything at all, not only a string.
@@ -44,7 +71,9 @@ describe("isValidDay", () => {
         expect(isValidDay(value)).toBe(false);
     });
 
-    it.todo("rejects an array, an object and a Date (add rows to the table above)");
+    it("rejects an array, an object and a Date (add rows to the table above)", () => {
+
+    });
 });
 
 describe("clampDays", () => {
@@ -62,11 +91,48 @@ describe("clampDays", () => {
         expect(clampDays(value, 4)).toBe(4);
     });
 
-    it.todo("returns the fallback for a decimal: '2.5'");
-    it.todo("returns the fallback for undefined and null");
-    it.todo("accepts a real number as well as a numeric string: 30 and '30'");
-    it.todo("raises a value below the minimum to the minimum: '0' -> 1");
-    it.todo("raises a negative value to the minimum: '-5' -> 1");
-    it.todo("lowers a value above the maximum to the maximum: '9999' -> 365.25");
-    it.todo("uses a custom min and max when they are passed in: clampDays('50', 4, 10, 20) -> 20");
+    it("returns the fallback for a decimal: '2.5'", () => {
+        expect(clampDays(4.6, 4)).toBe(4);
+
+
+    });
+
+
+    it.each([
+            ["unefined",undefined],
+            ["null",null],
+        ])("returns the fallback for undefined and null", (_label, value) => {
+            expect(clampDays(value, 4)).toBe(4);
+        });
+
+
+
+    it("accepts a real number as well as a numeric string: 30 and '30'", () => {
+        expect(clampDays("30", 4)).toBe(30);
+
+    });
+
+    it("raises a value below the minimum to the minimum: '0' -> 1", () => {
+        expect(clampDays(0,10)).toBe(1);
+
+
+    });
+
+    it("raises a negative value to the minimum: '-5' -> 1", () => {
+        expect(clampDays(-5,10)).toBe(1);
+
+
+    });
+
+    it("lowers a value above the maximum to the maximum: '9999' -> 365.25", () => {
+        expect(clampDays(999999,10)).toBe(365.25);
+
+
+    });
+
+    it("uses a custom min and max when they are passed in: clampDays('50', 4, 10, 20) -> 20", () => {
+
+        expect(clampDays('50', 4, 10, 20)).toBe(20);
+
+    });
 });
